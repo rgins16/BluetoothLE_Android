@@ -77,6 +77,9 @@ public class MainActivity extends Activity {
 
                     if (bytes != null) {
                         String input = new String(bytes);
+
+                        Log.i("Incoming Valid Data:", input);
+
                         addLineToTextView(input);
                     } else {
                         // This occasionally happens but no data should be lost

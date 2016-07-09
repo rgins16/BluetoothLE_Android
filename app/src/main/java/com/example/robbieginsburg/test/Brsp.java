@@ -33,6 +33,7 @@ public class Brsp {
     private ArrayBlockingQueue<Byte> _outputBuffer;
 
     private int dataCount = 0;
+    byte[] byteData;
 
     private BrspCallback _brspCallback;
 
@@ -226,29 +227,95 @@ public class Brsp {
                     // Incoming data
                     byte[] rawBytes = characteristic.getValue();
 
+                    // this will be comprised of a valid 6 byte data object to send
+                    // when it is a good packet to send (see below), it will be added to
+                    // the bytesToSend byte array
+                    // *** the leftover bytes from the previous iteration of this method will
+                    // *** still be stored in this variable because it is global
+                    byteData = new byte[6];
+
+                    // this will be comprised of all valid byte objects to send
+                    // at most it will contain 3 valid byte objects
+                    // each valid byte object is 6 bytes, and only 20 can be sent at once
+                    // 3 valid byte objects would equal 18 bytes
+                    // the '*'s and '\n's will be stripped off before being sent enabling it to be
+                    // 18 bytes
+                    byte[] validBytesToSend = null;
+
+                    // represents the number of valid byte objects being sent in this iteration
+                    // of the method
+                    int validCount = 0;
+
+
+                    // for each byte in the 20 bytes that were sent in the packet
                     for(byte byteChar : rawBytes){
+
+                        // if the byte is a star, reset the count and byte array of current object
                         if((char)byteChar == '*'){
                             dataCount = 0;
+                            byteData = new byte[6];
                         }
+                        // if byte is endline character
                         else if(((char)byteChar == '\n')){
+                            // and the dataCount is at 6, that means there is a valid 6 byte object,
+                            // and it can be saved fort transmission
                             if(dataCount == 6){
-                                Log.i("Tag2", "This is a good packet to send" + dataCount);
-                                dataCount = 0;
+                                //Log.i("Tag2", "------ This is a good packet to send ------");
+
+                                // if this is the first valid byte object of the 20 byte packet
+                                if (validCount == 0){
+                                    // store it in the byte array to be transmitted
+                                    validBytesToSend = byteData;
+                                    validCount++;
+                                }
+                                // if this is the second or third valid byte object of the 20 byte packet
+                                else if (validCount >= 1){
+
+                                    // create a tmp array that is the size of the two arrays
+                                    byte[] tmp = new byte[byteData.length + validBytesToSend.length];
+
+                                    // copy byteData into start of tmp
+                                    System.arraycopy(byteData, 0, tmp, 0, byteData.length);
+
+                                    // copy validBytesToSend into end of tmp
+                                    System.arraycopy(validBytesToSend, 0, tmp, byteData.length, validBytesToSend.length);
+
+                                    // puts tmp into the byte array to be transmitted
+                                    validBytesToSend = tmp;
+
+                                    validCount++;
+                                }
+                                // there can not be more than 3 valid byte objects (max 18 bytes)
                             }
-                            else{
-                                dataCount = 0;
-                            }
+
+                            // reset
+                            dataCount = 0;
+                            byteData = new byte[6];
                         }
+                        // this checks for bad data
+                        else if(dataCount >= 6){
+                            // reset
+                            dataCount = 0;
+                            byteData = new byte[6];
+                        }
+                        // adds the current byte to a tmp byte array that might be transmitted
+                        // if it turns out to be a valid byte object (6 bytes and follows the rules above)
                         else if((char)byteChar != '*' && (char)byteChar != '\n'){
+
+                            byteData[dataCount] = byteChar;
                             dataCount++;
                         }
-                        if((char)byteChar == ' ' && dataCount != 0) Log.i("asd", "space" + dataCount);
-                        else if(dataCount != 0) Log.i("count", "The count is" + dataCount);
                     }
 
-                    String rawString = getRawString(rawBytes);
-                    debugLog("IncoimgData:" + rawString);
-                    addToBuffer(_inputBuffer, rawBytes);
+                    //String rawSent = getRawString(validBytesToSend);
+                    //debugLog("Byte Array to be sent: " + rawSent + " --- and its length is" + validBytesToSend.length);
+
+                    //String rawString = getRawString(rawBytes);
+                    //debugLog("IncoimgData:" + rawString);
+
+                    //addToBuffer(_inputBuffer, rawBytes);validBytesToSend
+                    addToBuffer(_inputBuffer, validBytesToSend);
+
                     _brspCallback.onDataReceived(Brsp.this);
                 } else if (characteristic.getUuid().equals(BRSP_RTS_UUID)) {
                     _lastRTS = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT8, 0);
