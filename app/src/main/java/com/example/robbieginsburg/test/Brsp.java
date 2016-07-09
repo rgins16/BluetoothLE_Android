@@ -32,7 +32,7 @@ public class Brsp {
     private ArrayBlockingQueue<Byte> _inputBuffer;
     private ArrayBlockingQueue<Byte> _outputBuffer;
 
-    private int byteCount = 1;
+    private int dataCount = 0;
 
     private BrspCallback _brspCallback;
 
@@ -225,6 +225,27 @@ public class Brsp {
                 if (characteristic.getUuid().equals(BRSP_TX_UUID)) {
                     // Incoming data
                     byte[] rawBytes = characteristic.getValue();
+
+                    for(byte byteChar : rawBytes){
+                        if((char)byteChar == '*'){
+                            dataCount = 0;
+                        }
+                        else if(((char)byteChar == '\n')){
+                            if(dataCount == 6){
+                                Log.i("Tag2", "This is a good packet to send" + dataCount);
+                                dataCount = 0;
+                            }
+                            else{
+                                dataCount = 0;
+                            }
+                        }
+                        else if((char)byteChar != '*' && (char)byteChar != '\n'){
+                            dataCount++;
+                        }
+                        if((char)byteChar == ' ' && dataCount != 0) Log.i("asd", "space" + dataCount);
+                        else if(dataCount != 0) Log.i("count", "The count is" + dataCount);
+                    }
+
                     String rawString = getRawString(rawBytes);
                     debugLog("IncoimgData:" + rawString);
                     addToBuffer(_inputBuffer, rawBytes);
@@ -564,24 +585,6 @@ public class Brsp {
         byte[] bytes = new byte[bCount];
         for (int i = 0; i < bCount; i++) {
             bytes[i] = queue.poll().byteValue();
-        }
-
-        String str = new String(bytes, StandardCharsets.UTF_8);
-        Log.d("Full String", "" + str);
-
-        for (char ch : str.toCharArray()){
-            if(ch == '*'){
-                Log.i("Tag1", "--- * ---");
-                byteCount = 1;
-            }
-            if(ch == '\n'){
-                Log.i("Tag2", "---NEW LINE---");
-            }
-            if(ch != '*' && ch != '\n'){
-                byteCount++;
-            }
-
-            Log.i("Tag3", "" + byteCount);
         }
 
         return bytes;

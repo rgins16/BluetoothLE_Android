@@ -69,7 +69,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onDataReceived(final Brsp obj) {
-            Log.d(TAG, "onDataReceived thread id:" + Process.myTid());
+            //Log.d(TAG, "onDataReceived thread id:" + Process.myTid());
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
