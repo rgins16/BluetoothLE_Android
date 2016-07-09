@@ -2,15 +2,12 @@ package com.example.robbieginsburg.test;
 
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
-import java.security.acl.LastOwnerException;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
@@ -19,7 +16,6 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
-import android.util.Base64;
 import android.util.Log;
 
 /**
@@ -36,6 +32,8 @@ public class Brsp {
     private ArrayBlockingQueue<Byte> _inputBuffer;
     private ArrayBlockingQueue<Byte> _outputBuffer;
 
+    private int byteCount = 1;
+
     private BrspCallback _brspCallback;
 
     // private BluetoothGattService _brspGattService;
@@ -48,15 +46,13 @@ public class Brsp {
     private boolean _sending;
     private byte[] _lastBytes; // Last bytes sent to remote device
     private int _lastRTS = 0;
-    private static final int _packetSize = 20; // Max bytes to send to
-    // remote device on each write
+    private static final int _packetSize = 20; // Max bytes to send to remote device on each write
     private long _securityLevel;
-    private int _initState = 0; // Used for writing setup characteristics and
-    // descriptors. The current init step
+    private int _initState = 0; // Used for writing setup characteristics and descriptors.
+    // The current init step
     private static final int _initStepCount = 3; // 0 based
 
-    boolean _isClosing = false; // Used for hack to not call gatt.close() more
-    // than once
+    boolean _isClosing = false; // Used for hack to not call gatt.close() more than once
 
     // Initializes or reinitializes the object. Should be called on disconnect.
     private void init() {
@@ -569,6 +565,25 @@ public class Brsp {
         for (int i = 0; i < bCount; i++) {
             bytes[i] = queue.poll().byteValue();
         }
+
+        String str = new String(bytes, StandardCharsets.UTF_8);
+        Log.d("Full String", "" + str);
+
+        for (char ch : str.toCharArray()){
+            if(ch == '*'){
+                Log.i("Tag1", "--- * ---");
+                byteCount = 1;
+            }
+            if(ch == '\n'){
+                Log.i("Tag2", "---NEW LINE---");
+            }
+            if(ch != '*' && ch != '\n'){
+                byteCount++;
+            }
+
+            Log.i("Tag3", "" + byteCount);
+        }
+
         return bytes;
     }
 
@@ -583,7 +598,7 @@ public class Brsp {
                 sendError(((queue.equals(_inputBuffer)) ? "Input Buffer" : "Output Buffer") + " could not write null value.");
             }
         }
-    }
+}
 
     // Sends an error callback with a base Exception and writes an error message
     // to console

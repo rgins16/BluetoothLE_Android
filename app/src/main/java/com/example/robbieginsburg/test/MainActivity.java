@@ -2,11 +2,6 @@ package com.example.robbieginsburg.test;
 
 import java.util.ArrayList;
 import java.util.List;
-//import com.blueradios.Brsp;
-//import com.blueradios.BrspCallback;
-//import com.blueradios.exception.UnstableException;
-import com.example.robbieginsburg.test.R;
-
 import android.os.Bundle;
 import android.os.Process;
 import android.app.Activity;
@@ -25,31 +20,25 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.text.Editable;
-import android.text.method.TextKeyListener;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.TextView.OnEditorActionListener;
 import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
-    private static final int MAX_OUTPUT_LINES = 100 + 1; // max lines in the outputView
-    static List<String> _outputLines = new ArrayList<String>();
+    private static final int MAX_OUTPUT_LINES = 100 + 1;
 
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
 
-    private AlertDialog confirm;
     private TextView _textViewOutput;
-    private View _view;
     private ScrollView _scrollView;
 
     private BrspCallback _brspCallback = new BrspCallback() {
@@ -85,6 +74,7 @@ public class MainActivity extends Activity {
                 @Override
                 public void run() {
                     byte[] bytes = obj.readBytes();
+
                     if (bytes != null) {
                         String input = new String(bytes);
                         addLineToTextView(input);
@@ -400,17 +390,6 @@ public class MainActivity extends Activity {
     private void hideSoftKeyboard() {
         InputMethodManager inputMethodManager = (InputMethodManager) this.getSystemService(Activity.INPUT_METHOD_SERVICE);
         inputMethodManager.hideSoftInputFromWindow(this.getCurrentFocus().getWindowToken(), 0);
-    }
-
-    private void showSoftKeyboard(EditText field) {
-        field.setFocusableInTouchMode(true);
-        field.requestFocus();
-        hideSoftKeyboard();
-        InputMethodManager inputMethodManager = (InputMethodManager) this.getSystemService(Service.INPUT_METHOD_SERVICE);
-        // Not working for some reason
-        // inputMethodManager.showSoftInput(field,
-        // InputMethodManager.SHOW_IMPLICIT);
-        inputMethodManager.toggleSoftInput(0, 0);
     }
 
     private void doScan() {

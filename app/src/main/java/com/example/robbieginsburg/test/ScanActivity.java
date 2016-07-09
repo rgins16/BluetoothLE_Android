@@ -1,13 +1,8 @@
 package com.example.robbieginsburg.test;
 
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import com.example.robbieginsburg.test.R;
-
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -26,10 +21,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
-/**
- * Discovery LE BRSP Devices Controller
- *
- */
 public class ScanActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
     public static final int REQUEST_SELECT_DEVICE = 1;
@@ -144,10 +135,10 @@ public class ScanActivity extends Activity {
 
         final ListView listview = (ListView) findViewById(R.id.scanview);
 
-//	if (_bluetoothAdapter == null || !_bluetoothAdapter.isEnabled()) {
-//	    Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-//	    startActivityForResult(enableBtIntent, 1);
-//	}
+        if (_bluetoothAdapter == null || !_bluetoothAdapter.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableBtIntent, 1);
+        }
 
         final BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
         if (_bluetoothAdapter == null) {
