@@ -1,7 +1,11 @@
 package com.example.robbieginsburg.test;
 
+import java.sql.Array;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Process;
 import android.app.Activity;
@@ -41,6 +45,14 @@ public class MainActivity extends Activity {
     private TextView _textViewOutput;
     private ScrollView _scrollView;
 
+    //private List<Double> REDLED = new ArrayList<>();
+    //private List<Double> IRLED = new ArrayList<>();
+
+    double[] REDLED = new double[0];
+    double[] IRLED = new double[0];
+
+    SmoothFreq smoothFreq;
+
     private BrspCallback _brspCallback = new BrspCallback() {
 
         @Override
@@ -75,12 +87,132 @@ public class MainActivity extends Activity {
                 public void run() {
                     byte[] bytes = obj.readBytes();
 
+                    Log.d("length*************", "" + bytes.length);
+
                     if (bytes != null) {
                         String input = new String(bytes);
 
-                        Log.i("Incoming Valid Data:", input);
+                        int shiftBy = 0;
 
-                        addLineToTextView(input);
+                        double[] addToRED = null;
+                        double[] addToIR = null;
+                        double[] tmpRED = null;
+                        double[] tmpIR = null;
+
+                        if(input.length() == 6){
+                            shiftBy = 1;
+                            input = input.substring(0, 6) + "\n";
+
+                            // get DC values
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+
+                            // convert DC values to AC
+                            val1 *= (1.2/(2^15));
+                            val2 *= (1.2/(2^15));
+
+                            addToRED = new double[1];
+                            addToRED[0] = val1;
+
+                            addToIR = new double[1];
+                            addToIR[0] = val2;
+
+                            // create a tmp array that is the size of the two arrays
+                            tmpRED = new double[REDLED.length + addToRED.length];
+                            tmpIR = new double[REDLED.length + addToRED.length];
+                        }
+                        else if(input.length() == 12){
+                            shiftBy = 2;
+                            input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
+
+                            // get DC values
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+
+                            // convert DC values to AC
+                            val1 *= (1.2/(2^15));
+                            val2 *= (1.2/(2^15));
+                            val3 *= (1.2/(2^15));
+                            val4 *= (1.2/(2^15));
+
+                            addToRED = new double[2];
+                            addToRED[0] = val1;
+                            addToRED[1] = val3;
+
+                            addToIR = new double[2];
+                            addToIR[0] = val2;
+                            addToIR[1] = val4;
+                        }
+                        else if(input.length() == 18){
+                            shiftBy = 3;
+                            input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
+
+                            // get DC values
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+                            double val5 = (char) bytes[12] | ((char) bytes[13] << 8);
+                            double val6 = (char) bytes[15] | ((char) bytes[15] << 8);
+
+                            // convert DC values to AC
+                            val1 *= (1.2/(2^15));
+                            val2 *= (1.2/(2^15));
+                            val3 *= (1.2/(2^15));
+                            val4 *= (1.2/(2^15));
+                            val5 *= (1.2/(2^15));
+                            val6 *= (1.2/(2^15));
+
+                            addToRED = new double[3];
+                            addToRED[0] = val1;
+                            addToRED[1] = val3;
+                            addToRED[2] = val5;
+
+                            addToIR = new double[3];
+                            addToIR[0] = val2;
+                            addToIR[1] = val4;
+                            addToIR[2] = val6;
+                        }
+
+                        if(addToRED != null && tmpRED!= null){
+                            //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+                            // copy REDLED/IRLED into start of tmp
+                            System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
+                            System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
+
+                            // copy addToRED/addToIR into end of tmp
+                            System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
+                            System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
+
+                            // puts the now combined tmp array back into the original array
+                            REDLED = tmpRED;
+                            IRLED = tmpIR;
+
+                            // add the received bytes (after being transformed) to the REDLED/IRLED
+                            // byte arrays
+                            System.arraycopy(addToRED, 0, REDLED, REDLED.length, addToRED.length);
+                            System.arraycopy(addToRED, 0, IRLED, IRLED.length, addToRED.length);
+                        }
+
+                        // will check to see if the arrays are >= 1500 after adding the value
+                        // if so it will drop the oldest entry
+                        if(REDLED.length >= 50){
+                            System.arraycopy(REDLED, shiftBy, REDLED, 0, REDLED.length-shiftBy);
+                            System.arraycopy(IRLED, shiftBy, IRLED, 0, IRLED.length-shiftBy);
+                        }
+
+                        //Log.d("REDLED Length biz", "LENGTH: " + REDLED.length);
+
+                        //Log.i("REDLED", REDLED.toString());
+                        //Log.i("IRLED", IRLED.toString());
+
+                        // *************************************************************************
+                        // ************************************************addLineToTextView(input);
+
+                        // call a function to start some conversion or something
+
                     } else {
                         // This occasionally happens but no data should be lost
                     }
@@ -165,6 +297,24 @@ public class MainActivity extends Activity {
 
     };
 
+    // async task that constantly gets the user's location
+    private class SmoothFreq extends AsyncTask<String, Integer, String> {
+
+        @Override
+        protected String doInBackground(String... params) {return null;}
+
+        @Override
+        protected void onPostExecute(String result) {
+
+            // do stuff
+            Log.d("tag plz show", "show dis here " + REDLED.length);
+
+            // make the async task repeat itself so it can keep updating the user's location
+            smoothFreq = new SmoothFreq();
+            smoothFreq.execute();
+        }
+    }
+
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         // Hack to prevent onCreate being called on orientation change
@@ -234,6 +384,10 @@ public class MainActivity extends Activity {
 
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();
+
+        // start asynctask that constantly runs the smooth and freq functions on the received data
+        smoothFreq = new SmoothFreq();
+        smoothFreq.execute();
 
     }
 
