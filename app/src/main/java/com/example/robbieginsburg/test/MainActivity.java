@@ -39,6 +39,8 @@ public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
     private static final int MAX_OUTPUT_LINES = 100 + 1;
 
+    private final int MAX_DATA = 10;
+
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
 
@@ -87,12 +89,10 @@ public class MainActivity extends Activity {
                 public void run() {
                     byte[] bytes = obj.readBytes();
 
-                    Log.d("length*************", "" + bytes.length);
-
                     if (bytes != null) {
-                        String input = new String(bytes);
+                        //Log.d("length*************", "" + bytes.length);
 
-                        int shiftBy = 0;
+                        String input = new String(bytes);
 
                         double[] addToRED = null;
                         double[] addToIR = null;
@@ -100,7 +100,6 @@ public class MainActivity extends Activity {
                         double[] tmpIR = null;
 
                         if(input.length() == 6){
-                            shiftBy = 1;
                             input = input.substring(0, 6) + "\n";
 
                             // get DC values
@@ -122,7 +121,6 @@ public class MainActivity extends Activity {
                             tmpIR = new double[REDLED.length + addToRED.length];
                         }
                         else if(input.length() == 12){
-                            shiftBy = 2;
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
 
                             // get DC values
@@ -146,7 +144,6 @@ public class MainActivity extends Activity {
                             addToIR[1] = val4;
                         }
                         else if(input.length() == 18){
-                            shiftBy = 3;
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
 
                             // get DC values
@@ -189,23 +186,27 @@ public class MainActivity extends Activity {
                             // puts the now combined tmp array back into the original array
                             REDLED = tmpRED;
                             IRLED = tmpIR;
-
-                            // add the received bytes (after being transformed) to the REDLED/IRLED
-                            // byte arrays
-                            System.arraycopy(addToRED, 0, REDLED, REDLED.length, addToRED.length);
-                            System.arraycopy(addToRED, 0, IRLED, IRLED.length, addToRED.length);
                         }
 
                         // will check to see if the arrays are >= 1500 after adding the value
                         // if so it will drop the oldest entry
-                        if(REDLED.length >= 50){
-                            System.arraycopy(REDLED, shiftBy, REDLED, 0, REDLED.length-shiftBy);
-                            System.arraycopy(IRLED, shiftBy, IRLED, 0, IRLED.length-shiftBy);
+                        //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+                        if(REDLED.length >= MAX_DATA){
+
+                            int shiftBy = REDLED.length - MAX_DATA;
+
+                            double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
+                            double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+
+                            System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
+                            System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
+
+                            // puts the shifted tmp array back into the original array
+                            REDLED = tmpForShiftRED;
+                            IRLED = tmpForShiftIR;
                         }
 
-                        //Log.d("REDLED Length biz", "LENGTH: " + REDLED.length);
-
-                        //Log.i("REDLED", REDLED.toString());
+                        Log.i("REDLED", REDLED.toString());
                         //Log.i("IRLED", IRLED.toString());
 
                         // *************************************************************************
@@ -307,7 +308,8 @@ public class MainActivity extends Activity {
         protected void onPostExecute(String result) {
 
             // do stuff
-            Log.d("tag plz show", "show dis here " + REDLED.length);
+            //Log.d("tag plz show", "show dis here " + REDLED.length);
+            //Log.i("REDLED", String.valueOf(REDLED.toString().charAt(0)));
 
             // make the async task repeat itself so it can keep updating the user's location
             smoothFreq = new SmoothFreq();
