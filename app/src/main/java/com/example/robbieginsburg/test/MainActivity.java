@@ -48,11 +48,11 @@ public class MainActivity extends Activity {
     private TextView _textViewOutput;
     private ScrollView _scrollView;
 
-    double[] REDLED = new double[0];
-    double[] IRLED = new double[0];
+//    double[] REDLED = new double[0];
+//    double[] IRLED = new double[0];
 
-    double[] REDLED = new double[0];
-    double[] IRLED = new double[0];
+    byte[] REDLED = new byte[0];
+    byte[] IRLED = new byte[0];
 
     SmoothFreq smoothFreq;
 
@@ -91,44 +91,42 @@ public class MainActivity extends Activity {
                     byte[] bytes = obj.readBytes();
 
                     if (bytes != null) {
-                        //Log.d("length*************", "" + bytes.length);
 
                         String input = new String(bytes);
 
-                        double[] addToRED = null;
-                        double[] addToIR = null;
-                        double[] tmpRED = null;
-                        double[] tmpIR = null;
+                        byte[] addToRED = null;
+                        byte[] addToIR = null;
+                        byte[] tmpRED = null;
+                        byte[] tmpIR = null;
 
                         if(input.length() == 6){
-                            input = input.substring(0, 6) + "\n";
 
                             // get DC values
-                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
+                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
                             val2 *= (1.2/(2^15));
 
-                            addToRED = new double[1];
+                            addToRED = new byte[1];
                             addToRED[0] = val1;
 
-                            addToIR = new double[1];
+                            addToIR = new byte[1];
                             addToIR[0] = val2;
 
                             // create a tmp array that is the size of the two arrays
-                            tmpRED = new double[REDLED.length + addToRED.length];
-                            tmpIR = new double[REDLED.length + addToRED.length];
+                            tmpRED = new byte[REDLED.length + addToRED.length];
+                            tmpIR = new byte[IRLED.length + addToIR.length];
                         }
                         else if(input.length() == 12){
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
 
                             // get DC values
-                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
-                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
-                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
+                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
+                            byte val3 = (byte) ((char) bytes[6] | ((char) bytes[7] << 8));
+                            byte val4 = (byte) ((char) bytes[9] | ((char) bytes[10] << 8));
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
@@ -136,24 +134,28 @@ public class MainActivity extends Activity {
                             val3 *= (1.2/(2^15));
                             val4 *= (1.2/(2^15));
 
-                            addToRED = new double[2];
+                            addToRED = new byte[2];
                             addToRED[0] = val1;
                             addToRED[1] = val3;
 
-                            addToIR = new double[2];
+                            addToIR = new byte[2];
                             addToIR[0] = val2;
                             addToIR[1] = val4;
+
+                            // create a tmp array that is the size of the two arrays
+                            tmpRED = new byte[REDLED.length + addToRED.length];
+                            tmpIR = new byte[IRLED.length + addToIR.length];
                         }
                         else if(input.length() == 18){
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
 
                             // get DC values
-                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
-                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
-                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
-                            double val5 = (char) bytes[12] | ((char) bytes[13] << 8);
-                            double val6 = (char) bytes[15] | ((char) bytes[15] << 8);
+                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
+                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
+                            byte val3 = (byte) ((char) bytes[6] | ((char) bytes[7] << 8));
+                            byte val4 = (byte) ((char) bytes[9] | ((char) bytes[10] << 8));
+                            byte val5 = (byte) ((char) bytes[12] | ((char) bytes[13] << 8));
+                            byte val6 = (byte) ((char) bytes[15] | ((char) bytes[15] << 8));
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
@@ -163,15 +165,19 @@ public class MainActivity extends Activity {
                             val5 *= (1.2/(2^15));
                             val6 *= (1.2/(2^15));
 
-                            addToRED = new double[3];
+                            addToRED = new byte[3];
                             addToRED[0] = val1;
                             addToRED[1] = val3;
                             addToRED[2] = val5;
 
-                            addToIR = new double[3];
+                            addToIR = new byte[3];
                             addToIR[0] = val2;
                             addToIR[1] = val4;
                             addToIR[2] = val6;
+
+                            // create a tmp array that is the size of the two arrays
+                            tmpRED = new byte[REDLED.length + addToRED.length];
+                            tmpIR = new byte[IRLED.length + addToIR.length];
                         }
 
                         if(addToRED != null && tmpRED!= null){
@@ -196,8 +202,8 @@ public class MainActivity extends Activity {
 
                             int shiftBy = REDLED.length - MAX_DATA;
 
-                            double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
-                            double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+                            byte[] tmpForShiftRED = new byte[REDLED.length-shiftBy];
+                            byte[] tmpForShiftIR = new byte[IRLED.length-shiftBy];
 
                             System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
                             System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
