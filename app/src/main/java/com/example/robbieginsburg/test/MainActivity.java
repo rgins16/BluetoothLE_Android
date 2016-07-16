@@ -3,6 +3,7 @@ package com.example.robbieginsburg.test;
 import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import android.os.AsyncTask;
@@ -47,8 +48,8 @@ public class MainActivity extends Activity {
     private TextView _textViewOutput;
     private ScrollView _scrollView;
 
-    //private List<Double> REDLED = new ArrayList<>();
-    //private List<Double> IRLED = new ArrayList<>();
+    double[] REDLED = new double[0];
+    double[] IRLED = new double[0];
 
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
@@ -206,7 +207,7 @@ public class MainActivity extends Activity {
                             IRLED = tmpForShiftIR;
                         }
 
-                        Log.i("REDLED", REDLED.toString());
+                        //Log.i("REDLED", REDLED.toString());
                         //Log.i("IRLED", IRLED.toString());
 
                         // *************************************************************************
@@ -302,16 +303,85 @@ public class MainActivity extends Activity {
     private class SmoothFreq extends AsyncTask<String, Integer, String> {
 
         @Override
-        protected String doInBackground(String... params) {return null;}
+        // perofrm the smooth and freq functions
+        protected String doInBackground(String... params) {
+
+            //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+            /*int shiftBy = REDLED.length - MAX_DATA;
+
+            double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
+            double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+
+            System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
+            System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
+
+            // puts the shifted tmp array back into the original array
+            REDLED = tmpForShiftRED;
+            IRLED = tmpForShiftIR;*/
+
+            if(REDLED.length == 1500){
+
+                double[] smooth = new double[1560];
+                double[] hanning = new double[31];
+
+                double[] tmp = new double[30];
+                double[] tmp2 = new double[30];
+
+                final int WINDOWLENGTH = 31;
+
+                // **************************************************************** smooth function
+                // gets the first 30 elements from REDLED and stores them in tmp
+                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
+                // gets the last 30 elements from REDLED and stores them in tmp2
+                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
+
+                // reverses them
+                // will be added to the smooth array
+                Collections.reverse(Arrays.asList(tmp));
+                Collections.reverse(Arrays.asList(tmp2));
+
+                // creates the smooth array
+                System.arraycopy(tmp, 0, smooth, 0, 0);
+                System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
+                System.arraycopy(tmp2, 0, smooth, 1530, 30);
+
+                // creates the hanning array
+                for(int i = 0; i < WINDOWLENGTH; i++){
+                    hanning[i] = .5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1) );
+                }
+
+                // convolute the above arrays
+                for(int i = 0; i < hanning.length; i ++){
+
+                }
+                // **************************************************************** smooth function
+
+
+
+                // **************************************************************** freq function
+                //
+                // **************************************************************** freq function
+
+            }
+
+
+
+
+
+
+            return null;
+
+
+
+        }
 
         @Override
         protected void onPostExecute(String result) {
 
             // do stuff
-            //Log.d("tag plz show", "show dis here " + REDLED.length);
-            //Log.i("REDLED", String.valueOf(REDLED.toString().charAt(0)));
 
-            // make the async task repeat itself so it can keep updating the user's location
+
+            // make the async task repeat itself
             smoothFreq = new SmoothFreq();
             smoothFreq.execute();
         }
