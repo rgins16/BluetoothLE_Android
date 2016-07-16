@@ -1,17 +1,12 @@
 package com.example.robbieginsburg.test;
 
-import java.sql.Array;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
-
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Process;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -31,7 +26,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -309,29 +303,18 @@ public class MainActivity extends Activity {
     private class SmoothFreq extends AsyncTask<String, Integer, String> {
 
         @Override
-        // perofrm the smooth and freq functions
+        // perform the smooth and freq functions
         protected String doInBackground(String... params) {
-
             //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
-            /*int shiftBy = REDLED.length - MAX_DATA;
 
-            double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
-            double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
-
-            System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
-            System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
-
-            // puts the shifted tmp array back into the original array
-            REDLED = tmpForShiftRED;
-            IRLED = tmpForShiftIR;*/
-
+            // checks to make sure the buffer is full
             if(REDLED.length == 1500){
 
-                double[] smooth = new double[1560];
-                double[] hanning = new double[31];
+                byte[] smooth = new byte[1560];
+                byte[] hanning = new byte[31];
 
-                double[] tmp = new double[30];
-                double[] tmp2 = new double[30];
+                byte[] tmp = new byte[30];
+                byte[] tmp2 = new byte[30];
 
                 final int WINDOWLENGTH = 31;
 
@@ -351,41 +334,40 @@ public class MainActivity extends Activity {
                 System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
                 System.arraycopy(tmp2, 0, smooth, 1530, 30);
 
-                // creates the hanning array
+                // creates the hanning array and gets the sum of all the elements in it
+                byte sum = 0;
                 for(int i = 0; i < WINDOWLENGTH; i++){
-                    hanning[i] = .5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1) );
+                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1) ));
+                    sum += hanning[i];
                 }
 
                 // convolute the above arrays
-                for(int i = 0; i < hanning.length; i ++){
-
+                for(int i = 0; i < smooth.length; i ++){
+                    smooth[i] = (byte) (smooth[i] / sum);
                 }
                 // **************************************************************** smooth function
 
 
 
                 // **************************************************************** freq function
-                //
+
+
+
+
+
+
+
                 // **************************************************************** freq function
 
             }
 
-
-
-
-
-
             return null;
-
-
-
         }
 
         @Override
         protected void onPostExecute(String result) {
 
             // do stuff
-
 
             // make the async task repeat itself
             smoothFreq = new SmoothFreq();
