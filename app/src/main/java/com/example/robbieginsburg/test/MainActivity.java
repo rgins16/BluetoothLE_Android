@@ -1,5 +1,6 @@
 package com.example.robbieginsburg.test;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import android.os.AsyncTask;
@@ -34,7 +35,9 @@ public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
     private static final int MAX_OUTPUT_LINES = 100 + 1;
 
-    private final int MAX_DATA = 10;
+    private final int MAX_DATA = 1500;
+    private final int FS = 50;
+    private int counter = 0;
 
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
@@ -308,10 +311,11 @@ public class MainActivity extends Activity {
             //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
 
             // checks to make sure the buffer is full
-            if(REDLED.length == 1500){
+            if(REDLED.length == MAX_DATA) {
 
                 byte[] smooth = new byte[1560];
                 byte[] hanning = new byte[31];
+                byte[] afterShift = new byte[1530];
 
                 byte[] tmp = new byte[30];
                 byte[] tmp2 = new byte[30];
@@ -336,29 +340,73 @@ public class MainActivity extends Activity {
 
                 // creates the hanning array and gets the sum of all the elements in it
                 byte sum = 0;
-                for(int i = 0; i < WINDOWLENGTH; i++){
-                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1) ));
+                for (int i = 0; i < WINDOWLENGTH; i++) {
+                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
                     sum += hanning[i];
                 }
 
                 // convolute the above arrays
-                for(int i = 0; i < smooth.length; i ++){
+                for (int i = 0; i < smooth.length; i++) {
                     smooth[i] = (byte) (smooth[i] / sum);
                 }
                 // **************************************************************** smooth function
 
-
-
-                // **************************************************************** freq function
-
-
-
-
-
-
+                System.arraycopy(smooth, 31, afterShift, 0, afterShift.length);
 
                 // **************************************************************** freq function
+                // convert byte array to double array
+                /*ByteBuffer buf = ByteBuffer.wrap(smooth);
+                double[] smoothDouble = new double[smooth.length / 8];
+                for (int i = 0; i < smoothDouble.length; i++)
+                    smoothDouble[i] = buf.getLong(i*8);*/
 
+                // start of fft transform ********************************************************
+                // Computes the discrete Fourier transform (DFT) of the given vector.
+                // All the array arguments must have the same length.
+                byte[] inreal = afterShift;
+                byte[] inimag = new byte[smooth.length];
+                byte[] outreal = new byte[smooth.length];
+                //byte[] outimag = new byte[smooth.length];
+
+                int n = inreal.length;
+                for (int i = 0; i < n; i++) {  // For each output element
+                    byte sumreal = 0;
+                    //double sumimag = 0;
+                    for (int j = 0; j < n; j++) {  // For each input element
+                        byte angle = (byte) (2 * Math.PI * j * i / n);
+                        sumreal += inreal[j] * Math.cos(angle) + inimag[j] * Math.sin(angle);
+                        //sumimag += -inreal[t] * Math.sin(angle) + inimag[t] * Math.cos(angle);
+                    }
+                    outreal[i] = sumreal;
+                    //outimag[k] = sumimag;
+                }
+                // end of fft transform ********************************************************
+
+                // array outreal is output of fft
+                byte[] freq = outreal;
+                for (int i = 0; i < freq.length; i++) {
+                    freq[i] = (byte) ((i * FS) / MAX_DATA);
+                }
+
+                // cuts the final output array in half because the second half mirrors the first half
+                byte[] finalOutput = new byte[freq.length/2];
+                System.arraycopy(freq, 0, finalOutput, 0, freq.length / 2);
+
+//                ByteBuffer buf = ByteBuffer.wrap(freq);
+//                double[] finalOutputDouBLE = new double[freq.length / 8];
+//                for (int i = 0; i < finalOutputDouBLE.length; i++) {
+//                    finalOutputDouBLE[i] = buf.getLong(i * 8);
+//                    Log.d("here", "here: " + finalOutputDouBLE[i]);
+//                }
+//                Log.d("AND THE LENGTH IS", "AND THE LENGTH IS: " + finalOutput.length);
+
+//                Arrays.sort(finalOutput);
+//
+//                double max = finalOutput[finalOutput.length-1] * FS;
+//                double min = finalOutput[0] * FS;
+//                // **************************************************************** freq function
+//                Log.d("MAX" , "MAX: " + max * 60);
+//                Log.d("MIN" , "MIN: " + min * 60);
             }
 
             return null;
