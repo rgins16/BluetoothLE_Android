@@ -246,7 +246,6 @@ public class Brsp {
                     // of the method
                     int validCount = 0;
 
-
                     // for each byte in the 20 bits that were sent in the packet
                     for(byte byteChar : rawBytes){
 
@@ -668,7 +667,7 @@ public class Brsp {
                 sendError(((queue.equals(_inputBuffer)) ? "Input Buffer" : "Output Buffer") + " could not write null value.");
             }
         }
-}
+    }
 
     // Sends an error callback with a base Exception and writes an error message
     // to console

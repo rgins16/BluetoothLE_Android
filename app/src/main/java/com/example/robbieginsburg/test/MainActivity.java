@@ -1,8 +1,5 @@
 package com.example.robbieginsburg.test;
 
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.Collections;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Process;
@@ -45,11 +42,11 @@ public class MainActivity extends Activity {
     private TextView _textViewOutput;
     private ScrollView _scrollView;
 
-//    double[] REDLED = new double[0];
-//    double[] IRLED = new double[0];
+    // initialize freq array
+    double[] freq = new double[MAX_DATA / 2];
 
-    byte[] REDLED = new byte[0];
-    byte[] IRLED = new byte[0];
+    double[] REDLED = new double[0];
+    double[] IRLED = new double[0];
 
     SmoothFreq smoothFreq;
 
@@ -91,39 +88,40 @@ public class MainActivity extends Activity {
 
                         String input = new String(bytes);
 
-                        byte[] addToRED = null;
-                        byte[] addToIR = null;
-                        byte[] tmpRED = null;
-                        byte[] tmpIR = null;
+                        double[] addToRED = null;
+                        double[] addToIR = null;
+                        double[] tmpRED = null;
+                        double[] tmpIR = null;
 
                         if(input.length() == 6){
+                            input = input.substring(0, 6) + "\n";
 
                             // get DC values
-                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
-                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
                             val2 *= (1.2/(2^15));
 
-                            addToRED = new byte[1];
+                            addToRED = new double[1];
                             addToRED[0] = val1;
 
-                            addToIR = new byte[1];
+                            addToIR = new double[1];
                             addToIR[0] = val2;
 
                             // create a tmp array that is the size of the two arrays
-                            tmpRED = new byte[REDLED.length + addToRED.length];
-                            tmpIR = new byte[IRLED.length + addToIR.length];
+                            tmpRED = new double[REDLED.length + addToRED.length];
+                            tmpIR = new double[IRLED.length + addToIR.length];
                         }
                         else if(input.length() == 12){
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
 
                             // get DC values
-                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
-                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
-                            byte val3 = (byte) ((char) bytes[6] | ((char) bytes[7] << 8));
-                            byte val4 = (byte) ((char) bytes[9] | ((char) bytes[10] << 8));
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
@@ -131,28 +129,28 @@ public class MainActivity extends Activity {
                             val3 *= (1.2/(2^15));
                             val4 *= (1.2/(2^15));
 
-                            addToRED = new byte[2];
+                            addToRED = new double[2];
                             addToRED[0] = val1;
                             addToRED[1] = val3;
 
-                            addToIR = new byte[2];
+                            addToIR = new double[2];
                             addToIR[0] = val2;
                             addToIR[1] = val4;
 
                             // create a tmp array that is the size of the two arrays
-                            tmpRED = new byte[REDLED.length + addToRED.length];
-                            tmpIR = new byte[IRLED.length + addToIR.length];
+                            tmpRED = new double[REDLED.length + addToRED.length];
+                            tmpIR = new double[IRLED.length + addToIR.length];
                         }
                         else if(input.length() == 18){
                             input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
 
                             // get DC values
-                            byte val1 = (byte) ((char) bytes[0] | ((char) bytes[1] << 8));
-                            byte val2 = (byte) ((char) bytes[3] | ((char) bytes[4] << 8));
-                            byte val3 = (byte) ((char) bytes[6] | ((char) bytes[7] << 8));
-                            byte val4 = (byte) ((char) bytes[9] | ((char) bytes[10] << 8));
-                            byte val5 = (byte) ((char) bytes[12] | ((char) bytes[13] << 8));
-                            byte val6 = (byte) ((char) bytes[15] | ((char) bytes[15] << 8));
+                            double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                            double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                            double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                            double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+                            double val5 = (char) bytes[12] | ((char) bytes[13] << 8);
+                            double val6 = (char) bytes[15] | ((char) bytes[15] << 8);
 
                             // convert DC values to AC
                             val1 *= (1.2/(2^15));
@@ -162,19 +160,19 @@ public class MainActivity extends Activity {
                             val5 *= (1.2/(2^15));
                             val6 *= (1.2/(2^15));
 
-                            addToRED = new byte[3];
+                            addToRED = new double[3];
                             addToRED[0] = val1;
                             addToRED[1] = val3;
                             addToRED[2] = val5;
 
-                            addToIR = new byte[3];
+                            addToIR = new double[3];
                             addToIR[0] = val2;
                             addToIR[1] = val4;
                             addToIR[2] = val6;
 
                             // create a tmp array that is the size of the two arrays
-                            tmpRED = new byte[REDLED.length + addToRED.length];
-                            tmpIR = new byte[IRLED.length + addToIR.length];
+                            tmpRED = new double[REDLED.length + addToRED.length];
+                            tmpIR = new double[IRLED.length + addToIR.length];
                         }
 
                         if(addToRED != null && tmpRED!= null){
@@ -193,14 +191,14 @@ public class MainActivity extends Activity {
                         }
 
                         // will check to see if the arrays are >= 1500 after adding the value
-                        // if so it will drop the oldest entry
+                        // if so it will drop the oldest entrys
                         //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
                         if(REDLED.length >= MAX_DATA){
 
                             int shiftBy = REDLED.length - MAX_DATA;
 
-                            byte[] tmpForShiftRED = new byte[REDLED.length-shiftBy];
-                            byte[] tmpForShiftIR = new byte[IRLED.length-shiftBy];
+                            double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
+                            double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
 
                             System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
                             System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
@@ -213,10 +211,7 @@ public class MainActivity extends Activity {
                         //Log.i("REDLED", REDLED.toString());
                         //Log.i("IRLED", IRLED.toString());
 
-                        // *************************************************************************
-                        // ************************************************addLineToTextView(input);
-
-                        // call a function to start some conversion or something
+                        // addLineToTextView(input);
 
                     } else {
                         // This occasionally happens but no data should be lost
@@ -310,48 +305,53 @@ public class MainActivity extends Activity {
         protected String doInBackground(String... params) {
             //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
 
+            //if(REDLED.length % 100 == 0) Log.d("REDLED.Length", "Length: " + REDLED.length);
+
             // checks to make sure the buffer is full
             if(REDLED.length == MAX_DATA) {
 
-                byte[] smooth = new byte[1560];
-                byte[] hanning = new byte[31];
-                byte[] afterShift = new byte[1530];
-
-                byte[] tmp = new byte[30];
-                byte[] tmp2 = new byte[30];
-
-                final int WINDOWLENGTH = 31;
-
-                // **************************************************************** smooth function
-                // gets the first 30 elements from REDLED and stores them in tmp
-                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
-                // gets the last 30 elements from REDLED and stores them in tmp2
-                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
-
-                // reverses them
-                // will be added to the smooth array
-                Collections.reverse(Arrays.asList(tmp));
-                Collections.reverse(Arrays.asList(tmp2));
-
-                // creates the smooth array
-                System.arraycopy(tmp, 0, smooth, 0, 0);
-                System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
-                System.arraycopy(tmp2, 0, smooth, 1530, 30);
-
-                // creates the hanning array and gets the sum of all the elements in it
-                byte sum = 0;
-                for (int i = 0; i < WINDOWLENGTH; i++) {
-                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
-                    sum += hanning[i];
-                }
-
-                // convolute the above arrays
-                for (int i = 0; i < smooth.length; i++) {
-                    smooth[i] = (byte) (smooth[i] / sum);
-                }
-                // **************************************************************** smooth function
-
-                System.arraycopy(smooth, 31, afterShift, 0, afterShift.length);
+//                byte[] smooth = new byte[1560];
+//                byte[] hanning = new byte[31];
+//                byte[] afterShift = new byte[1530];
+//
+//                byte[] tmp = new byte[30];
+//                byte[] tmp2 = new byte[30];
+//
+//                final int WINDOWLENGTH = 31;
+//
+//                // **************************************************************** smooth function
+//                // gets the first 30 elements from REDLED and stores them in tmp
+//                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
+//                // gets the last 30 elements from REDLED and stores them in tmp2
+//                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
+//
+//                // reverses them
+//                // will be added to the smooth array
+//                Collections.reverse(Arrays.asList(tmp));
+//                Collections.reverse(Arrays.asList(tmp2));
+//
+//                // creates the smooth array
+//                System.arraycopy(tmp, 0, smooth, 0, 0);
+//                System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
+//                System.arraycopy(tmp2, 0, smooth, 1530, 30);
+//
+//                // creates the hanning array and gets the sum of all the elements in it
+//                byte sum = 0;
+//                for (int i = 0; i < WINDOWLENGTH; i++) {
+//                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
+//                    sum += hanning[i];
+//                }
+//
+//                // convolute the above arrays
+//                for (int i = 0; i < hanning.length; i++) {
+//                    hanning[i] = (byte) (hanning[i] / sum);
+//                }
+//
+//                //convolve the two arrays
+//
+//                // **************************************************************** smooth function
+//
+//                System.arraycopy(smooth, 31, afterShift, 0, afterShift.length);
 
                 // **************************************************************** freq function
                 // convert byte array to double array
@@ -363,50 +363,58 @@ public class MainActivity extends Activity {
                 // start of fft transform ********************************************************
                 // Computes the discrete Fourier transform (DFT) of the given vector.
                 // All the array arguments must have the same length.
-                byte[] inreal = afterShift;
-                byte[] inimag = new byte[smooth.length];
-                byte[] outreal = new byte[smooth.length];
-                //byte[] outimag = new byte[smooth.length];
+                double[] inReal = REDLED;
+                double[] inImag = new double[REDLED.length];
+                double[] fftOutput = new double[REDLED.length];
 
-                int n = inreal.length;
+                int n = inReal.length;
                 for (int i = 0; i < n; i++) {  // For each output element
-                    byte sumreal = 0;
+                    double sumreal = 0;
                     //double sumimag = 0;
                     for (int j = 0; j < n; j++) {  // For each input element
-                        byte angle = (byte) (2 * Math.PI * j * i / n);
-                        sumreal += inreal[j] * Math.cos(angle) + inimag[j] * Math.sin(angle);
-                        //sumimag += -inreal[t] * Math.sin(angle) + inimag[t] * Math.cos(angle);
+                        double angle = (2 * Math.PI * j * i / n);
+                        sumreal += inReal[j] * Math.cos(angle) + inImag[j] * Math.sin(angle);
                     }
-                    outreal[i] = sumreal;
-                    //outimag[k] = sumimag;
+                    fftOutput[i] = sumreal;
                 }
                 // end of fft transform ********************************************************
 
-                // array outreal is output of fft
-                byte[] freq = outreal;
-                for (int i = 0; i < freq.length; i++) {
-                    freq[i] = (byte) ((i * FS) / MAX_DATA);
+                // the indexes of the freq array where the values are between .2/.5 are 6/15
+                // the indexes of the freq array where the values are between .9/1.4 are 27/42
+
+                // find the index of the max value in the FFT array that corresponds to the first range     // respirator
+                // find the index of the max value in the FFT array that corresponds to the second range     // heart rate
+                double[] respiratorRange = new double[9];
+                double[] heartRateRange = new double[15];
+                System.arraycopy(fftOutput, 6, respiratorRange, 0, 9);
+                System.arraycopy(fftOutput, 27, heartRateRange, 0, 15);
+
+                // find the index of the max value in the respiratorRange array
+                int respMaxIndex = 0;
+                double respMax = respiratorRange[0];
+                for(int i = 0; i < respiratorRange.length-1; i++){
+                    if(respMax > respiratorRange[i+1]){
+                        respMax = respiratorRange[i+1];
+                        respMaxIndex = i + 1;
+                    }
                 }
 
-                // cuts the final output array in half because the second half mirrors the first half
-                byte[] finalOutput = new byte[freq.length/2];
-                System.arraycopy(freq, 0, finalOutput, 0, freq.length / 2);
+                // find the index of the max value in the heartRateRange array
+                int heartMaxIndex = 0;
+                double heartMax = heartRateRange[0];
+                for(int i = 0; i < heartRateRange.length-1; i++){
+                    if(heartMax > heartRateRange[i+1]){
+                        heartMax = heartRateRange[i+1];
+                        heartMaxIndex = i + 1;
+                    }
+                }
 
-//                ByteBuffer buf = ByteBuffer.wrap(freq);
-//                double[] finalOutputDouBLE = new double[freq.length / 8];
-//                for (int i = 0; i < finalOutputDouBLE.length; i++) {
-//                    finalOutputDouBLE[i] = buf.getLong(i * 8);
-//                    Log.d("here", "here: " + finalOutputDouBLE[i]);
-//                }
-//                Log.d("AND THE LENGTH IS", "AND THE LENGTH IS: " + finalOutput.length);
+                // takes indexes of max and look them up in freq array and multiply by 50
+                double respiratorRate = freq[6 + respMaxIndex] * 50;
+                double heartRate = freq[27 + heartMaxIndex] * 50;
 
-//                Arrays.sort(finalOutput);
-//
-//                double max = finalOutput[finalOutput.length-1] * FS;
-//                double min = finalOutput[0] * FS;
-//                // **************************************************************** freq function
-//                Log.d("MAX" , "MAX: " + max * 60);
-//                Log.d("MIN" , "MIN: " + min * 60);
+                Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
+                Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
             }
 
             return null;
@@ -474,6 +482,12 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // calculates the frequencies
+        for (int i = 0; i < freq.length; i++) {
+            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
+        }
+
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
 
