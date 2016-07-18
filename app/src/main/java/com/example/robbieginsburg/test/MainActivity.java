@@ -1,5 +1,6 @@
 package com.example.robbieginsburg.test;
 
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Process;
@@ -28,6 +29,9 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.XAxis;
+
 public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
     private static final int MAX_OUTPUT_LINES = 100 + 1;
@@ -44,6 +48,8 @@ public class MainActivity extends Activity {
 
     // initialize freq array
     double[] freq = new double[MAX_DATA / 2];
+
+    LineChart heartRateChart;
 
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
@@ -413,8 +419,8 @@ public class MainActivity extends Activity {
                 double respiratorRate = freq[6 + respMaxIndex] * 50;
                 double heartRate = freq[27 + heartMaxIndex] * 50;
 
-                Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
-                Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
+                //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
+                //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
             }
 
             return null;
@@ -423,7 +429,12 @@ public class MainActivity extends Activity {
         @Override
         protected void onPostExecute(String result) {
 
-            // do stuff
+            // make the async wait a second before it is called again
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
             // make the async task repeat itself
             smoothFreq = new SmoothFreq();
@@ -483,26 +494,36 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
+        Log.d(TAG, "onCreate");
+        super.onCreate(savedInstanceState);
+
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
             freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
         }
 
-        Log.d(TAG, "onCreate");
-        super.onCreate(savedInstanceState);
-
         IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         this.registerReceiver(mReceiver, adapterStateFilter);
 
         setContentView(R.layout.activity_main);
-        _textViewOutput = (TextView) findViewById(R.id.textViewOutput);
-        _scrollView = (ScrollView) findViewById(R.id.scrollView);
-        _textViewOutput.setOnClickListener(new View.OnClickListener() {
+        //_textViewOutput = (TextView) findViewById(R.id.textViewOutput);
+        //_scrollView = (ScrollView) findViewById(R.id.scrollView);
+        /*_textViewOutput.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideSoftKeyboard();
             }
-        });
+        });*/
+        heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
+        heartRateChart.setDescription("Heart Rate");
+        heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
+
+        XAxis xAxis = heartRateChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setTextSize(10f);
+        xAxis.setTextColor(Color.RED);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setDrawGridLines(false);
 
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();
@@ -510,7 +531,6 @@ public class MainActivity extends Activity {
         // start asynctask that constantly runs the smooth and freq functions on the received data
         smoothFreq = new SmoothFreq();
         smoothFreq.execute();
-
     }
 
     @Override
