@@ -525,19 +525,23 @@ public class MainActivity extends Activity {
 
 
         heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
-        heartRateChart.setDescription("Heart Rate");
+        //heartRateChart.setDescription("Heart Rate");
+        heartRateChart.setDescriptionColor(Color.RED);
         heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
+        heartRateChart.setTouchEnabled(false);
 
         // define info about x axis
         XAxis xAxis = heartRateChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setTextSize(10f);
-        xAxis.setTextColor(Color.RED);
+        xAxis.setTextColor(Color.BLUE);
         xAxis.setDrawAxisLine(true);
         xAxis.setDrawGridLines(false);
 
         // define info about y axis
         YAxis yAxis = heartRateChart.getAxisLeft();
+        heartRateChart.getAxisRight().setEnabled(false);
+        yAxis.setAxisMinValue(0);
         yAxis.setTextSize(10f);
         yAxis.setTextColor(Color.BLUE);
         yAxis.setDrawAxisLine(true);
@@ -557,7 +561,7 @@ public class MainActivity extends Activity {
         valsToAdd1.add(val4);
 
         // set the entry of data we're adding to y-axis
-        LineDataSet setVals1 = new LineDataSet(valsToAdd1, "Values 1");
+        LineDataSet setVals1 = new LineDataSet(valsToAdd1, "Heart Rate");
         setVals1.setAxisDependency(YAxis.AxisDependency.LEFT);
 
         // add the entry to a data set, and set the value
