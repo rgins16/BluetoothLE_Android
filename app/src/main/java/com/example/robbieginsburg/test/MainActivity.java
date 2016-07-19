@@ -31,6 +31,13 @@ import android.widget.Toast;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+
+import java.util.ArrayList;
 
 public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
@@ -514,16 +521,61 @@ public class MainActivity extends Activity {
                 hideSoftKeyboard();
             }
         });*/
+
+
+
         heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
         heartRateChart.setDescription("Heart Rate");
         heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
 
+        // define info about x axis
         XAxis xAxis = heartRateChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setTextSize(10f);
         xAxis.setTextColor(Color.RED);
         xAxis.setDrawAxisLine(true);
         xAxis.setDrawGridLines(false);
+
+        // define info about y axis
+        YAxis yAxis = heartRateChart.getAxisLeft();
+        yAxis.setTextSize(10f);
+        yAxis.setTextColor(Color.BLUE);
+        yAxis.setDrawAxisLine(true);
+        yAxis.setDrawGridLines(false);
+
+        // define the entry of the value to add
+        ArrayList<Entry> valsToAdd1 = new ArrayList<Entry>();
+
+        // add the data to add to this entry
+        Entry val1 = new Entry(100.000f, 0); // 0 == quarter 1
+        valsToAdd1.add(val1);
+        Entry val2 = new Entry(105.000f, 1); // 1 == quarter 2
+        valsToAdd1.add(val2);
+        Entry val3 = new Entry(100.700f, 2); // 2 == quarter 3
+        valsToAdd1.add(val3);
+        Entry val4 = new Entry(103.300f, 3); // 4 == quarter 4
+        valsToAdd1.add(val4);
+
+        // set the entry of data we're adding to y-axis
+        LineDataSet setVals1 = new LineDataSet(valsToAdd1, "Values 1");
+        setVals1.setAxisDependency(YAxis.AxisDependency.LEFT);
+
+        // add the entry to a data set, and set the value
+        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
+        dataSets.add(setVals1);
+
+        // define x-axis
+        ArrayList<String> xVals = new ArrayList<String>();
+        xVals.add("first"); xVals.add("second"); xVals.add("third"); xVals.add("fourth");
+
+        // add the x-axis and data set to the graph
+        LineData data = new LineData(xVals, dataSets);
+        heartRateChart.setData(data);
+
+        // refresh the graph
+        heartRateChart.invalidate();
+
+
 
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();
