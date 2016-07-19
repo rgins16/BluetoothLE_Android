@@ -36,6 +36,7 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
+import com.github.mikephil.charting.utils.ColorTemplate;
 
 import java.util.ArrayList;
 
@@ -45,7 +46,7 @@ public class MainActivity extends Activity {
 
     private final int MAX_DATA = 1500;
     private final int FS = 50;
-    private int counter = 0;
+    private int numSeconds = 5;
 
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
@@ -57,6 +58,8 @@ public class MainActivity extends Activity {
     double[] freq = new double[MAX_DATA / 2];
 
     LineChart heartRateChart;
+    ArrayList<String> xVals = new ArrayList<String>();
+    LineData data;
 
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
@@ -221,7 +224,7 @@ public class MainActivity extends Activity {
                             IRLED = tmpForShiftIR;
                         }
 
-                        //Log.i("REDLED", REDLED.toString());
+                        Log.d("REDLED Length", "REDLED Length" + REDLED.length);
                         //Log.i("IRLED", IRLED.toString());
 
                         // addLineToTextView(input);
@@ -428,6 +431,7 @@ public class MainActivity extends Activity {
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
                 //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
+                addEntry(heartRate);
             }
 
             return null;
@@ -447,6 +451,119 @@ public class MainActivity extends Activity {
             smoothFreq = new SmoothFreq();
             smoothFreq.execute();
         }
+    }
+
+    private void addEntry(double heartRate) {Log.i("here987", "here");
+
+        xVals.add(String.valueOf(numSeconds+1));
+        data.addEntry(new Entry((float) heartRate, numSeconds), 0);
+        heartRateChart.notifyDataSetChanged(); // let the chart know it's data changed
+        heartRateChart.invalidate(); // refresh
+        numSeconds++;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+
+        Log.d(TAG, "onCreate");
+        super.onCreate(savedInstanceState);
+
+        // calculates the frequencies
+        for (int i = 0; i < freq.length; i++) {
+            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
+        }
+
+        IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
+        this.registerReceiver(mReceiver, adapterStateFilter);
+
+        setContentView(R.layout.activity_main);
+        //_textViewOutput = (TextView) findViewById(R.id.textViewOutput);
+        //_scrollView = (ScrollView) findViewById(R.id.scrollView);
+        /*_textViewOutput.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                hideSoftKeyboard();
+            }
+        });*/
+
+
+
+        heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
+        heartRateChart.setDescription("");
+        heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
+        heartRateChart.setTouchEnabled(false);
+
+        // define info about x axis
+        XAxis xAxis = heartRateChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setTextSize(10f);
+        xAxis.setTextColor(Color.BLUE);
+        xAxis.setDrawAxisLine(true);
+        xAxis.setDrawGridLines(false);
+
+        // define info about y axis
+        YAxis yAxis = heartRateChart.getAxisLeft();
+        heartRateChart.getAxisRight().setEnabled(false);
+        yAxis.setAxisMinValue(0);
+        yAxis.setTextSize(10f);
+        yAxis.setTextColor(Color.BLUE);
+        yAxis.setDrawAxisLine(true);
+        yAxis.setDrawGridLines(false);
+
+        ArrayList<Entry> valsComp1 = new ArrayList<Entry>();
+        ArrayList<Entry> valsComp2 = new ArrayList<Entry>();
+
+        Entry c1e1 = new Entry(100.000f, 0); // 0 == quarter 1
+        valsComp1.add(c1e1);
+        Entry c1e2 = new Entry(107.000f, 1); // 1 == quarter 2
+        valsComp1.add(c1e2);
+        Entry c1e3 = new Entry(120.000f, 2); // 2 == quarter 3
+        valsComp1.add(c1e3);
+        Entry c1e4 = new Entry(123.000f, 3); // 3 == quarter 4
+        valsComp1.add(c1e4);
+
+        Entry c2e1 = new Entry(120.000f, 0); // 0 == quarter 1
+        valsComp2.add(c2e1);
+        Entry c2e2 = new Entry(110.000f, 1); // 1 == quarter 2
+        valsComp2.add(c2e2);
+        Entry c2e3 = new Entry(115.000f, 2); // 2 == quarter 3
+        valsComp2.add(c2e3);
+        Entry c2e4 = new Entry(132.000f, 3); // 3 == quarter 4
+        valsComp2.add(c2e4);
+
+        LineDataSet setComp1 = new LineDataSet(valsComp1, "Company 1");
+        setComp1.setAxisDependency(YAxis.AxisDependency.LEFT);
+        LineDataSet setComp2 = new LineDataSet(valsComp2, "Company 2");
+        setComp2.setAxisDependency(YAxis.AxisDependency.LEFT);
+
+        // use the interface ILineDataSet
+        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
+        dataSets.add(setComp1);
+        dataSets.add(setComp2);
+
+        //ArrayList<String> xVals = new ArrayList<String>();
+        xVals.add("1.Q");
+        xVals.add("2.Q");
+        xVals.add("3.Q");
+        xVals.add("4.Q");
+
+        data = new LineData(xVals, dataSets);
+        heartRateChart.setData(data);
+        heartRateChart.invalidate(); // refresh
+
+        // add entries to the "data" object
+        xVals.add("5");
+        data.addEntry(new Entry(169.000f, 4), 0);
+        heartRateChart.notifyDataSetChanged(); // let the chart know it's data changed
+        heartRateChart.invalidate(); // refresh
+
+
+        _brsp = new Brsp(_brspCallback, 10000, 10000);
+        doScan();
+
+        // start asynctask that constantly runs the smooth and freq functions on the received data
+        smoothFreq = new SmoothFreq();
+        smoothFreq.execute();
     }
 
     @Override
@@ -497,97 +614,6 @@ public class MainActivity extends Activity {
             }
         }
     };
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-
-        Log.d(TAG, "onCreate");
-        super.onCreate(savedInstanceState);
-
-        // calculates the frequencies
-        for (int i = 0; i < freq.length; i++) {
-            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
-        }
-
-        IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
-        this.registerReceiver(mReceiver, adapterStateFilter);
-
-        setContentView(R.layout.activity_main);
-        //_textViewOutput = (TextView) findViewById(R.id.textViewOutput);
-        //_scrollView = (ScrollView) findViewById(R.id.scrollView);
-        /*_textViewOutput.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                hideSoftKeyboard();
-            }
-        });*/
-
-
-
-        heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
-        //heartRateChart.setDescription("Heart Rate");
-        heartRateChart.setDescriptionColor(Color.RED);
-        heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
-        heartRateChart.setTouchEnabled(false);
-
-        // define info about x axis
-        XAxis xAxis = heartRateChart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setTextSize(10f);
-        xAxis.setTextColor(Color.BLUE);
-        xAxis.setDrawAxisLine(true);
-        xAxis.setDrawGridLines(false);
-
-        // define info about y axis
-        YAxis yAxis = heartRateChart.getAxisLeft();
-        heartRateChart.getAxisRight().setEnabled(false);
-        yAxis.setAxisMinValue(0);
-        yAxis.setTextSize(10f);
-        yAxis.setTextColor(Color.BLUE);
-        yAxis.setDrawAxisLine(true);
-        yAxis.setDrawGridLines(false);
-
-        // define the entry of the value to add
-        ArrayList<Entry> valsToAdd1 = new ArrayList<Entry>();
-
-        // add the data to add to this entry
-        Entry val1 = new Entry(100.000f, 0); // 0 == quarter 1
-        valsToAdd1.add(val1);
-        Entry val2 = new Entry(105.000f, 1); // 1 == quarter 2
-        valsToAdd1.add(val2);
-        Entry val3 = new Entry(100.700f, 2); // 2 == quarter 3
-        valsToAdd1.add(val3);
-        Entry val4 = new Entry(103.300f, 3); // 4 == quarter 4
-        valsToAdd1.add(val4);
-
-        // set the entry of data we're adding to y-axis
-        LineDataSet setVals1 = new LineDataSet(valsToAdd1, "Heart Rate");
-        setVals1.setAxisDependency(YAxis.AxisDependency.LEFT);
-
-        // add the entry to a data set, and set the value
-        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
-        dataSets.add(setVals1);
-
-        // define x-axis
-        ArrayList<String> xVals = new ArrayList<String>();
-        xVals.add("first"); xVals.add("second"); xVals.add("third"); xVals.add("fourth");
-
-        // add the x-axis and data set to the graph
-        LineData data = new LineData(xVals, dataSets);
-        heartRateChart.setData(data);
-
-        // refresh the graph
-        heartRateChart.invalidate();
-
-
-
-        _brsp = new Brsp(_brspCallback, 10000, 10000);
-        doScan();
-
-        // start asynctask that constantly runs the smooth and freq functions on the received data
-        smoothFreq = new SmoothFreq();
-        smoothFreq.execute();
-    }
 
     @Override
     protected void onDestroy() {
