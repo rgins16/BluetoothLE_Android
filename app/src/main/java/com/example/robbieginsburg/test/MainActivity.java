@@ -1,6 +1,5 @@
 package com.example.robbieginsburg.test;
 
-import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Process;
@@ -29,6 +28,7 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import android.graphics.Color;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
@@ -57,14 +57,14 @@ public class MainActivity extends Activity {
     // initialize freq array
     double[] freq = new double[MAX_DATA / 2];
 
-    LineChart heartRateChart;
-    ArrayList<String> xVals = new ArrayList<String>();
-    LineData data;
-
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
 
     SmoothFreq smoothFreq;
+
+    LineChart heartRateChart;
+    ArrayList<String> xVals = new ArrayList<String>();
+    LineData data;
 
     private BrspCallback _brspCallback = new BrspCallback() {
 
@@ -428,10 +428,10 @@ public class MainActivity extends Activity {
                 // takes indexes of max and look them up in freq array and multiply by 50
                 double respiratorRate = freq[6 + respMaxIndex] * 50;
                 double heartRate = freq[27 + heartMaxIndex] * 50;
-
-                //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
-                //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
                 addEntry(heartRate);
+
+                Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
+                Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
             }
 
             return null;
@@ -440,18 +440,62 @@ public class MainActivity extends Activity {
         @Override
         protected void onPostExecute(String result) {
 
-            // make the async wait a second before it is called again
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            // do stuff
 
             // make the async task repeat itself
             smoothFreq = new SmoothFreq();
             smoothFreq.execute();
         }
     }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        // Hack to prevent onCreate being called on orientation change
+        // This probably should be done in a better way in a real app
+        // http://stackoverflow.com/questions/456211/activity-restart-on-rotation-android
+        super.onConfigurationChanged(newConfig);
+    }
+
+    //Function can be used to disable or enable the bluetooth
+    private boolean setBluetooth(boolean enable) {
+        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        boolean isEnabled = bluetoothAdapter.isEnabled();
+        // Intent enableBtIntent = new
+        // Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+        if (enable) {
+            // startActivityForResult(enableBtIntent, 1);
+            return bluetoothAdapter.enable();
+        } else {
+            // startActivityForResult(enableBtIntent, 0);
+            return bluetoothAdapter.disable();
+        }
+    }
+
+    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            final String action = intent.getAction();
+
+            if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
+                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+                // Log.e(TAG, "STATE:" + state);
+                switch (state) {
+                    case BluetoothAdapter.STATE_OFF:
+//		    Log.d(TAG, "Enabling Bluetooth.  Result:" + setBluetooth(true));
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_OFF:
+                        // TODO: Disable user input and show restarting msg
+                        break;
+                    case BluetoothAdapter.STATE_ON:
+                        // _brsp = new Brsp(_brspCallback, 10000, 10000);
+                        // doScan();
+                        break;
+                    case BluetoothAdapter.STATE_TURNING_ON:
+                        break;
+                }
+            }
+        }
+    };
 
     private void addEntry(double heartRate) {Log.i("here987", "here");
 
@@ -465,27 +509,26 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Log.d(TAG, "onCreate");
-        super.onCreate(savedInstanceState);
-
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
             freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
         }
 
+        Log.d(TAG, "onCreate");
+        super.onCreate(savedInstanceState);
+
         IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         this.registerReceiver(mReceiver, adapterStateFilter);
 
         setContentView(R.layout.activity_main);
-        //_textViewOutput = (TextView) findViewById(R.id.textViewOutput);
-        //_scrollView = (ScrollView) findViewById(R.id.scrollView);
-        /*_textViewOutput.setOnClickListener(new View.OnClickListener() {
+        /*_textViewOutput = (TextView) findViewById(R.id.textViewOutput);
+        _scrollView = (ScrollView) findViewById(R.id.scrollView);
+        _textViewOutput.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 hideSoftKeyboard();
             }
         });*/
-
 
 
         heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
@@ -557,63 +600,14 @@ public class MainActivity extends Activity {
         heartRateChart.notifyDataSetChanged(); // let the chart know it's data changed
         heartRateChart.invalidate(); // refresh
 
-
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();
 
         // start asynctask that constantly runs the smooth and freq functions on the received data
         smoothFreq = new SmoothFreq();
         smoothFreq.execute();
+
     }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        // Hack to prevent onCreate being called on orientation change
-        // This probably should be done in a better way in a real app
-        // http://stackoverflow.com/questions/456211/activity-restart-on-rotation-android
-        super.onConfigurationChanged(newConfig);
-    }
-
-    //Function can be used to disable or enable the bluetooth
-    private boolean setBluetooth(boolean enable) {
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        boolean isEnabled = bluetoothAdapter.isEnabled();
-        // Intent enableBtIntent = new
-        // Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-        if (enable) {
-            // startActivityForResult(enableBtIntent, 1);
-            return bluetoothAdapter.enable();
-        } else {
-            // startActivityForResult(enableBtIntent, 0);
-            return bluetoothAdapter.disable();
-        }
-    }
-
-    private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            final String action = intent.getAction();
-
-            if (action.equals(BluetoothAdapter.ACTION_STATE_CHANGED)) {
-                final int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
-                // Log.e(TAG, "STATE:" + state);
-                switch (state) {
-                    case BluetoothAdapter.STATE_OFF:
-//		    Log.d(TAG, "Enabling Bluetooth.  Result:" + setBluetooth(true));
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_OFF:
-                        // TODO: Disable user input and show restarting msg
-                        break;
-                    case BluetoothAdapter.STATE_ON:
-                        // _brsp = new Brsp(_brspCallback, 10000, 10000);
-                        // doScan();
-                        break;
-                    case BluetoothAdapter.STATE_TURNING_ON:
-                        break;
-                }
-            }
-        }
-    };
 
     @Override
     protected void onDestroy() {
