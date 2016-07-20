@@ -16,6 +16,8 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
+import android.os.AsyncTask;
+import android.os.Bundle;
 import android.util.Log;
 
 /**
@@ -29,8 +31,19 @@ public class Brsp {
     private static final int DEFAULT_BUFFER_SIZE = 1024;
     private int _iBufferSize;
     private int _oBufferSize;
-    private ArrayBlockingQueue<Byte> _inputBuffer;
-    private ArrayBlockingQueue<Byte> _outputBuffer;
+    private ArrayBlockingQueue<Double> _inputBuffer;
+    private ArrayBlockingQueue<Double> _outputBuffer;
+
+    SmoothFreq smoothFreq;
+
+    private final int MAX_DATA = 1500;
+    private final int FS = 50;
+
+    // initialize freq array
+    double[] freq = new double[MAX_DATA / 2];
+
+    double[] REDLED = new double[0];
+    double[] IRLED = new double[0];
 
     private int dataCount = 0;
     byte[] byteData;
@@ -57,6 +70,7 @@ public class Brsp {
 
     // Initializes or reinitializes the object. Should be called on disconnect.
     private void init() {
+        //debugLog("init()");
         boolean brspStateChanged = _brspState != 0;
         _initState = 0;
         _brspState = 0;
@@ -87,6 +101,7 @@ public class Brsp {
      * @return true if output buffer is not empty
      */
     public boolean isSending() {
+        //debugLog("isSending()");
         return !_outputBuffer.isEmpty();
     }
 
@@ -101,6 +116,7 @@ public class Brsp {
      *         0 if a read was not performed during a connection
      */
     public int getLastRssi() {
+        //debugLog("getLastRssi()");
         return _lastRssi;
     }
 
@@ -110,6 +126,7 @@ public class Brsp {
      * @return The BluetoothGatt current connection state
      */
     public int getConnectionState() {
+        //debugLog("getCOnnectionState()");
         int returnVal = BluetoothGatt.STATE_DISCONNECTED;
         if (_gatt != null) {
             BluetoothManager manager = (BluetoothManager) _context.get().getSystemService(Context.BLUETOOTH_SERVICE);
@@ -137,6 +154,7 @@ public class Brsp {
      * @return {@link #BRSP_STATE_READY} or {@link #BRSP_STATE_NOT_READY}
      */
     public int getBrspState() {
+        //debugLog("getBrspState()");
         return _brspState;
     }
 
@@ -167,6 +185,7 @@ public class Brsp {
      * @return true if a successful write request was sent.
      */
     public boolean setBrspMode(int mode) {
+        //debugLog("setBrspMode()");
         if (mode != 0 && mode != 1 && mode != 2 && mode != 4) {
             sendError("setBrspMode failed because mode:" + mode + " is invalid.");
             return false;
@@ -198,6 +217,7 @@ public class Brsp {
      *         and {@link #BRSP_MODE_COMMAND}
      */
     public int getBrspMode() {
+        //debugLog("getBrspMode()");
         return _brspMode;
     }
 
@@ -208,6 +228,7 @@ public class Brsp {
      *         with a valid device
      */
     public BluetoothDevice getDevice() {
+        //debugLog("getDevice()");
         BluetoothDevice dev = null;
         if (_gatt != null)
             dev = _gatt.getDevice();
@@ -218,6 +239,7 @@ public class Brsp {
 
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            //debugLog("onCharacteristicChanged()");
             // debugLog("onCharacteristicChanged:" +
             // characteristic.getUuid().toString());
             if (_initState < _initStepCount) {
@@ -306,16 +328,13 @@ public class Brsp {
                         }
                     }
 
-                    //String rawSent = getRawString(validBytesToSend);
-                    //debugLog("Byte Array to be sent: " + rawSent + " --- and its length is" + validBytesToSend.length);
+                    // addToBuffer(_inputBuffer, validBytesToSend); *****************************
+                    if(validBytesToSend != null && (validBytesToSend.length == 6 ||
+                            validBytesToSend.length == 12 || validBytesToSend.length == 18)){
+                        addToLedArrays(validBytesToSend);
+                    }
 
-                    //String rawString = getRawString(rawBytes);
-                    //debugLog("IncoimgData:" + rawString);
-
-                    //addToBuffer(_inputBuffer, rawBytes);validBytesToSend
-                    addToBuffer(_inputBuffer, validBytesToSend);
-
-                    _brspCallback.onDataReceived(Brsp.this);
+                    //_brspCallback.onDataReceived(Brsp.this);
                 } else if (characteristic.getUuid().equals(BRSP_RTS_UUID)) {
                     _lastRTS = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_SINT8, 0);
                     sendPacket();
@@ -324,8 +343,148 @@ public class Brsp {
             super.onCharacteristicChanged(gatt, characteristic);
         }
 
+        public void addToLedArrays(byte[] validBytes){
+            //debugLog("addToLedArrays()");
+            byte[] bytes = validBytes;
+
+            if (bytes != null) {
+
+                String input = new String(bytes);
+
+                double[] addToRED = null;
+                double[] addToIR = null;
+                double[] tmpRED = null;
+                double[] tmpIR = null;
+
+                if(input.length() == 6){
+                    input = input.substring(0, 6) + "\n";
+
+                    // get DC values
+                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+
+                    // convert DC values to AC
+                    val1 *= (1.2/(2^15));
+                    val2 *= (1.2/(2^15));
+
+                    addToRED = new double[1];
+                    addToRED[0] = val1;
+
+                    addToIR = new double[1];
+                    addToIR[0] = val2;
+
+                    // create a tmp array that is the size of the two arrays
+                    tmpRED = new double[REDLED.length + addToRED.length];
+                    tmpIR = new double[IRLED.length + addToIR.length];
+                }
+                else if(input.length() == 12){
+                    input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
+
+                    // get DC values
+                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                    double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                    double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+
+                    // convert DC values to AC
+                    val1 *= (1.2/(2^15));
+                    val2 *= (1.2/(2^15));
+                    val3 *= (1.2/(2^15));
+                    val4 *= (1.2/(2^15));
+
+                    addToRED = new double[2];
+                    addToRED[0] = val1;
+                    addToRED[1] = val3;
+
+                    addToIR = new double[2];
+                    addToIR[0] = val2;
+                    addToIR[1] = val4;
+
+                    // create a tmp array that is the size of the two arrays
+                    tmpRED = new double[REDLED.length + addToRED.length];
+                    tmpIR = new double[IRLED.length + addToIR.length];
+                }
+                else if(input.length() == 18){
+                    input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
+
+                    // get DC values
+                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
+                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                    double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
+                    double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+                    double val5 = (char) bytes[12] | ((char) bytes[13] << 8);
+                    double val6 = (char) bytes[15] | ((char) bytes[15] << 8);
+
+                    // convert DC values to AC
+                    val1 *= (1.2/(2^15));
+                    val2 *= (1.2/(2^15));
+                    val3 *= (1.2/(2^15));
+                    val4 *= (1.2/(2^15));
+                    val5 *= (1.2/(2^15));
+                    val6 *= (1.2/(2^15));
+
+                    addToRED = new double[3];
+                    addToRED[0] = val1;
+                    addToRED[1] = val3;
+                    addToRED[2] = val5;
+
+                    addToIR = new double[3];
+                    addToIR[0] = val2;
+                    addToIR[1] = val4;
+                    addToIR[2] = val6;
+
+                    // create a tmp array that is the size of the two arrays
+                    tmpRED = new double[REDLED.length + addToRED.length];
+                    tmpIR = new double[IRLED.length + addToIR.length];
+                }
+
+                if(addToRED != null && tmpRED!= null){
+                    //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+                    // copy REDLED/IRLED into start of tmp
+                    System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
+                    System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
+
+                    // copy addToRED/addToIR into end of tmp
+                    System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
+                    System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
+
+                    // puts the now combined tmp array back into the original array
+                    REDLED = tmpRED;
+                    IRLED = tmpIR;
+                }
+
+                // will check to see if the arrays are >= 1500 after adding the value
+                // if so it will drop the oldest entrys
+                //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+                if(REDLED.length >= MAX_DATA){
+
+                    int shiftBy = REDLED.length - MAX_DATA;
+
+                    double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
+                    double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+
+                    System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
+                    System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
+
+                    // puts the shifted tmp array back into the original array
+                    REDLED = tmpForShiftRED;
+                    IRLED = tmpForShiftIR;
+                }
+
+                //Log.d("REDLED Length", "REDLED Length" + REDLED.length);
+                //Log.i("IRLED", IRLED.toString());
+
+                // addLineToTextView(input);
+
+            } else {
+                // This occasionally happens but no data should be lost
+            }
+
+        }
+
         @Override
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            //debugLog("onCharacteristicRead()");
             // debugLog("onCharacteristicRead:" +
             // characteristic.getUuid().toString());
             if (_initState < _initStepCount) {
@@ -340,6 +499,7 @@ public class Brsp {
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            //debugLog("onCharacteristicWrite()");
             debugLog("onCharacteristicWrite:" + characteristic.getUuid().toString() + " status:" + status);
             super.onCharacteristicWrite(gatt, characteristic, status);
             if (_initState < _initStepCount) {
@@ -374,6 +534,7 @@ public class Brsp {
 
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+            //debugLog("onConnectionStateChange()");
             super.onConnectionStateChange(gatt, status, newState);
             // debugLog("onConnectionStateChange status:" + status +
             // " newstate:" + newState);
@@ -419,6 +580,7 @@ public class Brsp {
 
         @Override
         public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            //debugLog("onDescriptorRead()");
             // debugLog("onDescriptorRead");
             if (_initState < _initStepCount) {
                 doNextInitStep();
@@ -428,6 +590,7 @@ public class Brsp {
 
         @Override
         public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+            //debugLog("onDescriptorWrite()");
             // debugLog("onDescriptorWrite");
             if (_initState < _initStepCount) {
                 doNextInitStep();
@@ -437,6 +600,7 @@ public class Brsp {
 
         @Override
         public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+            //debugLog("onReadRemoteRssi()");
             // debugLog("onReadRemoteRssi");
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 _lastRssi = rssi;
@@ -449,12 +613,14 @@ public class Brsp {
 
         @Override
         public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
+            //debugLog("onReliableWriteCompleted()");
             // debugLog("onReliableWriteCompleted");
             super.onReliableWriteCompleted(gatt, status);
         }
 
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+            //debugLog("onServicesDiscovered()");
             debugLog("onServicesDiscovered status:" + status);
             super.onServicesDiscovered(gatt, status);
             BluetoothGattService brspService = gatt.getService(BRSP_SERVICE_UUID);
@@ -475,6 +641,7 @@ public class Brsp {
 
     // Clean up the way this init works
     private void doNextInitStep() {
+        //debugLog("doNextInitStep()");
         _initState++;
         // debugLog("initState:" + _initState);
         BluetoothGattService brspService = _gatt.getService(BRSP_SERVICE_UUID);
@@ -503,6 +670,164 @@ public class Brsp {
         }
     }
 
+
+
+    // async task that smooths and performs the freq function
+    private class SmoothFreq extends AsyncTask<String, Integer, String> {
+
+        @Override
+        // perform the smooth and freq functions
+        protected String doInBackground(String... params) {
+            //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+
+            //if(REDLED.length % 100 == 0) Log.d("REDLED.Length", "Length: " + REDLED.length);
+
+            // checks to make sure the buffer is full
+            if(REDLED.length == MAX_DATA) {
+
+//                byte[] smooth = new byte[1560];
+//                byte[] hanning = new byte[31];
+//                byte[] afterShift = new byte[1530];
+//
+//                byte[] tmp = new byte[30];
+//                byte[] tmp2 = new byte[30];
+//
+//                final int WINDOWLENGTH = 31;
+//
+//                // **************************************************************** smooth function
+//                // gets the first 30 elements from REDLED and stores them in tmp
+//                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
+//                // gets the last 30 elements from REDLED and stores them in tmp2
+//                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
+//
+//                // reverses them
+//                // will be added to the smooth array
+//                Collections.reverse(Arrays.asList(tmp));
+//                Collections.reverse(Arrays.asList(tmp2));
+//
+//                // creates the smooth array
+//                System.arraycopy(tmp, 0, smooth, 0, 0);
+//                System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
+//                System.arraycopy(tmp2, 0, smooth, 1530, 30);
+//
+//                // creates the hanning array and gets the sum of all the elements in it
+//                byte sum = 0;
+//                for (int i = 0; i < WINDOWLENGTH; i++) {
+//                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
+//                    sum += hanning[i];
+//                }
+//
+//                // convolute the above arrays
+//                for (int i = 0; i < hanning.length; i++) {
+//                    hanning[i] = (byte) (hanning[i] / sum);
+//                }
+//
+//                //convolve the two arrays
+//
+//                // **************************************************************** smooth function
+//
+//                System.arraycopy(smooth, 31, afterShift, 0, afterShift.length);
+
+                // **************************************************************** freq function
+                // convert byte array to double array
+                /*ByteBuffer buf = ByteBuffer.wrap(smooth);
+                double[] smoothDouble = new double[smooth.length / 8];
+                for (int i = 0; i < smoothDouble.length; i++)
+                    smoothDouble[i] = buf.getLong(i*8);*/
+
+                // start of fft transform ********************************************************
+                // Computes the discrete Fourier transform (DFT) of the given vector.
+                // All the array arguments must have the same length.
+                double[] inReal = REDLED;
+                double[] inImag = new double[REDLED.length];
+                double[] fftOutput = new double[REDLED.length];
+
+                int n = inReal.length;
+                for (int i = 0; i < n; i++) {  // For each output element
+                    double sumreal = 0;
+                    //double sumimag = 0;
+                    for (int j = 0; j < n; j++) {  // For each input element
+                        double angle = (2 * Math.PI * j * i / n);
+                        sumreal += inReal[j] * Math.cos(angle) + inImag[j] * Math.sin(angle);
+                    }
+                    fftOutput[i] = sumreal;
+                }
+                // end of fft transform ********************************************************
+
+                // the indexes of the freq array where the values are between .2/.5 are 6/15
+                // the indexes of the freq array where the values are between .9/1.4 are 27/42
+
+                // find the index of the max value in the FFT array that corresponds to the first range     // respirator
+                // find the index of the max value in the FFT array that corresponds to the second range     // heart rate
+                double[] respiratorRange = new double[9];
+                double[] heartRateRange = new double[15];
+                System.arraycopy(fftOutput, 6, respiratorRange, 0, 9);
+                System.arraycopy(fftOutput, 27, heartRateRange, 0, 15);
+
+                // find the index of the max value in the respiratorRange array
+                int respMaxIndex = 0;
+                double respMax = respiratorRange[0];
+                for(int i = 0; i < respiratorRange.length-1; i++){
+                    if(respMax > respiratorRange[i+1]){
+                        respMax = respiratorRange[i+1];
+                        respMaxIndex = i + 1;
+                    }
+                }
+
+                // find the index of the max value in the heartRateRange array
+                int heartMaxIndex = 0;
+                double heartMax = heartRateRange[0];
+                for(int i = 0; i < heartRateRange.length-1; i++){
+                    if(heartMax > heartRateRange[i+1]){
+                        heartMax = heartRateRange[i+1];
+                        heartMaxIndex = i + 1;
+                    }
+                }
+
+                // takes indexes of max and look them up in freq array and multiply by 50
+                double respiratorRate = freq[6 + respMaxIndex] * 50;
+                double heartRate = freq[27 + heartMaxIndex] * 50;
+
+                double[] respHeartRates = new double[2];
+                respHeartRates[0] = respiratorRate;
+                respHeartRates[1] = heartRate;
+
+                // call addToBuffer to pass Respiration/Heart Rate to MainActivity
+                //addToBuffer(_inputBuffer, respHeartRates);
+
+                //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
+                //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
+
+                // call addToBuffer to pass Respiration/Heart Rate to MainActivity
+                addToBuffer(_inputBuffer, respHeartRates);
+                _brspCallback.onDataReceived(respHeartRates);
+            }
+            else{
+                Log.d("redlength", "redledlength: " + REDLED.length);
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String result) {
+
+            // do stuff
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // make the async task repeat itself
+            smoothFreq = new SmoothFreq();
+            smoothFreq.execute();
+        }
+    }
+
+
+
+
     /**
      * Base constructor. Buffer sizes will be set to 1024
      *
@@ -530,6 +855,7 @@ public class Brsp {
      *
      */
     public Brsp(BrspCallback callback, int inputBufferSize, int outputBufferSize) {
+        //debugLog("Brsp()");
         if (callback == null)
             throw new IllegalArgumentException("callback can not be null");
         inputBufferSize = (inputBufferSize < 1) ? DEFAULT_BUFFER_SIZE : inputBufferSize;
@@ -540,10 +866,11 @@ public class Brsp {
     }
 
     private void setBuffers(int inputBufferSize, int outputBufferSize) {
+        //debugLog("setBuffers()");
         _iBufferSize = inputBufferSize;
         _oBufferSize = outputBufferSize;
-        _inputBuffer = new ArrayBlockingQueue<Byte>(inputBufferSize);
-        _outputBuffer = new ArrayBlockingQueue<Byte>(outputBufferSize);
+        _inputBuffer = new ArrayBlockingQueue<Double>(inputBufferSize);
+        _outputBuffer = new ArrayBlockingQueue<Double>(outputBufferSize);
     }
 
     /**
@@ -553,6 +880,7 @@ public class Brsp {
      *         This can not be changed after instantiation.
      */
     public int getInputBufferSize() {
+        //debugLog("getInputBufferSize()");
         return _iBufferSize;
     }
 
@@ -563,6 +891,7 @@ public class Brsp {
      *         This can not be changed after instantiation.
      */
     public int getOutputBufferSize() {
+        //debugLog("getOutputBufferSize()");
         return _oBufferSize;
     }
 
@@ -572,6 +901,7 @@ public class Brsp {
      * @return Number of bytes in the InputBuffer
      */
     public int getInputBufferCount() {
+        //debugLog("getInputBufferCount()");
         return _inputBuffer.size();
     }
 
@@ -581,6 +911,7 @@ public class Brsp {
      * @return Number of bytes in the OutputBuffer
      */
     public int getOutputBufferCount() {
+        //debugLog("getOutputBufferCount()");
         return _outputBuffer.size();
     }
 
@@ -590,6 +921,7 @@ public class Brsp {
      * @return Number of bytes left that can be retrieved from device
      */
     public int intputBufferAvailableBytes() {
+        //debugLog("intputBufferAvailableBytes()");
         return _inputBuffer.remainingCapacity();
     }
 
@@ -599,6 +931,7 @@ public class Brsp {
      * @return Number of bytes left that can be written via writes
      */
     public int outputBufferAvailableBytes() {
+        //debugLog("outputBufferAvailableBytes()");
         return _outputBuffer.remainingCapacity();
     }
 
@@ -607,6 +940,7 @@ public class Brsp {
      * will be empty after this call returns.
      */
     public void clearInputBuffer() {
+        //debugLog("clearInputBuffer()");
         _inputBuffer.clear();
     }
 
@@ -615,6 +949,7 @@ public class Brsp {
      * will be empty after this call returns.
      */
     public void clearOutputBuffer() {
+        //debugLog("clearOutputBuffer()");
         boolean sendingChanged = isSending();
         _outputBuffer.clear();
         if (sendingChanged)
@@ -628,6 +963,7 @@ public class Brsp {
      *         is empty.
      */
     public byte[] readBytes() {
+        //debugLog("readBytes1()");
         int byteCount = getInputBufferCount();
         return readBytes(byteCount);
 
@@ -640,10 +976,12 @@ public class Brsp {
      *         byteCount greater than bufferCount, will return all bytes.
      */
     public byte[] readBytes(int byteCount) {
+        //debugLog("readBytes2()");
         return readBuffer(_inputBuffer, byteCount);
     }
 
-    private byte[] readBuffer(ArrayBlockingQueue<Byte> queue, int byteCount) {
+    private byte[] readBuffer(ArrayBlockingQueue<Double> queue, int byteCount) {
+        //debugLog("readBuffer()");
         int bytesInBuffer = queue.size();
         int bCount = (bytesInBuffer < byteCount) ? bytesInBuffer : byteCount;
         if (bCount < 1)
@@ -656,10 +994,11 @@ public class Brsp {
         return bytes;
     }
 
-    private void addToBuffer(ArrayBlockingQueue<Byte> queue, byte[] bytes) {
-        for (int i = 0; i < bytes.length; i++) {
+    private void addToBuffer(ArrayBlockingQueue<Double> queue, double[] respHeartRates) {
+        //debugLog("addToBuffer()");
+        for (int i = 0; i < respHeartRates.length; i++) {
             try {
-                queue.add(new Byte(bytes[i]));
+                queue.add(new Double(respHeartRates[i])); // ************************
             } catch (IllegalStateException e) {
                 sendError(((queue.equals(_inputBuffer)) ? "Input Buffer" : "Output Buffer") + " could not be written.  Buffer full.");
             } catch (NullPointerException e) {
@@ -672,6 +1011,7 @@ public class Brsp {
     // Sends an error callback with a base Exception and writes an error message
     // to console
     private void sendError(String msg) {
+        //debugLog("sendError1()");
         Log.e(TAG, msg);
         _brspCallback.onError(this, new Exception(msg));
     }
@@ -680,44 +1020,48 @@ public class Brsp {
     // error message
     // to console
     private void sendError(Exception e) {
+        //debugLog("sendError2()");
         Log.e(TAG, e.getMessage());
         _brspCallback.onError(this, e);
     }
 
-    /**
-     * Queues up bytes and sends them to the remote device FIFO order
-     *
-     * @param bytes
-     *            Bytes to send
-     * @return
-     */
-    public void writeBytesObj(Byte[] bytes) {
-        int i = 0;
-        byte[] bs = new byte[bytes.length];
-        for (Byte b : bytes)
-            bs[i++] = b.byteValue();
-        writeBytes(bs);
-    }
-
-    /**
-     * Queues up bytes and sends them to the remote device FIFO order
-     *
-     * @param bytes
-     *            Bytes to send
-     */
-    public void writeBytes(byte[] bytes) {
-        // Raise error if not BRSP_STATE_READY
-        if (_brspState != BRSP_STATE_READY)
-            throw new IllegalStateException("Can not write remote device until getBrspState() == BRSP_STATE_READY.");
-
-        boolean sendingChanged = !isSending();
-        addToBuffer(_outputBuffer, bytes);
-        if (sendingChanged)
-            _brspCallback.onSendingStateChanged(this);
-        sendPacket();
-    }
+//    /**
+//     * Queues up bytes and sends them to the remote device FIFO order
+//     *
+//     * @param bytes
+//     *            Bytes to send
+//     * @return
+//     */
+//    public void writeBytesObj(Byte[] bytes) {
+//        debugLog("writeBytesObj()");
+//        int i = 0;
+//        byte[] bs = new byte[bytes.length];
+//        for (Byte b : bytes)
+//            bs[i++] = b.byteValue();
+//        writeBytes(bs);
+//    }
+//
+//    /**
+//     * Queues up bytes and sends them to the remote device FIFO order
+//     *
+//     * @param bytes
+//     *            Bytes to send
+//     */
+//    public void writeBytes(byte[] bytes) {
+//        debugLog("writeBytes()");
+//        // Raise error if not BRSP_STATE_READY
+//        if (_brspState != BRSP_STATE_READY)
+//            throw new IllegalStateException("Can not write remote device until getBrspState() == BRSP_STATE_READY.");
+//
+//        boolean sendingChanged = !isSending();
+//        addToBuffer(_outputBuffer, bytes);
+//        if (sendingChanged)
+//            _brspCallback.onSendingStateChanged(this);
+//        sendPacket();
+//    }
 
     private void sendPacket() {
+        //debugLog("sendPacket()");
 
         if (_gatt == null)
             return; // teena: lets not try to send if _gatt became null
@@ -754,6 +1098,16 @@ public class Brsp {
      *             if an argument is null
      */
     public boolean connect(Context context, BluetoothDevice device) {
+        //debugLog("connect()");
+
+        // calculates the frequencies
+        for (int i = 0; i < freq.length; i++) {
+            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
+        }
+
+        smoothFreq = new SmoothFreq();
+        smoothFreq.execute();
+
         // debugLog("connect()");
         if (_isClosing) {
             debugLog("Currently closing gatt.  Ignoring connect...");
@@ -804,6 +1158,7 @@ public class Brsp {
      * Disconnects from the remote device.
      */
     public void disconnect() {
+        //debugLog("disconnect()");
         // debugLog("disconnect()");
         if (_gatt != null && !_isClosing) {
             _gatt.disconnect();
@@ -821,6 +1176,7 @@ public class Brsp {
      * @see Brsp#getLastRssi()
      */
     public void readRssi() {
+        //debugLog("readRssi()");
         boolean result = false;
         if (_gatt != null && !_isClosing) {
             try {
@@ -838,6 +1194,7 @@ public class Brsp {
     }
 
     public void close() {
+        //debugLog("close()");
         if (_gatt != null && !_isClosing) {
             _isClosing = true;
             init();
@@ -853,6 +1210,7 @@ public class Brsp {
     private static final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
 
     private void closeGattAfterDelay(long milliSeconds) {
+        //debugLog("closeGattAfterDelay1()");
         Runnable task = new Runnable() {
             public void run() {
                 // TODO: Add a try catch if needed. Docs don't state that this
@@ -869,6 +1227,7 @@ public class Brsp {
 
     // Defaults to specific value
     private void closeGattAfterDelay() {
+        //debugLog("closeGattAfterDelay2()");
         closeGattAfterDelay(100);
     }
 
@@ -879,6 +1238,7 @@ public class Brsp {
     }
 
     private String getRawString(byte[] rawBytes) {
+        //debugLog("getRawString()");
 
         String rawDataString = null;
         try {

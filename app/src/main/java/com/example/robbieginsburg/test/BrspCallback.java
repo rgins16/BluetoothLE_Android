@@ -29,6 +29,10 @@ public abstract class BrspCallback {
 
     }
 
+    public void onDataReceived(double[] respHeartRates) {
+
+    }
+
     /**
      * Called when an internal exception occurs
      *
