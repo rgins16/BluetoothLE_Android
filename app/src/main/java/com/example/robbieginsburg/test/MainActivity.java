@@ -16,14 +16,11 @@ import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
-import android.text.Editable;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import android.graphics.Color;
@@ -40,12 +37,12 @@ import java.util.ArrayList;
 public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
 
-    private int numSeconds = 5;
+    private int numRespHeart = 0;
 
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
 
-    LineChart heartRateChart;
+    LineChart lineChart;
     ArrayList<String> xVals = new ArrayList<String>();
     LineData data;
 
@@ -81,10 +78,17 @@ public class MainActivity extends Activity {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Log.d("RespHeartRates1", "Respiration Rate: " + respHeartRates[0]);
-                    Log.d("RespHeartRates2", "Heart Rate: " + respHeartRates[1]);
+                    //Log.d("RespHeartRates1", "Respiration Rate: " + respHeartRates[0]);
+                    //Log.d("RespHeartRates2", "Heart Rate: " + respHeartRates[1]);
 
-                    //byte[] bytes = obj.readBytes();
+                    xVals.add(String.valueOf(numRespHeart + 1));
+                    data.addEntry(new Entry((float) respHeartRates[0], numRespHeart), 0);
+                    data.addEntry(new Entry((float) respHeartRates[1], numRespHeart), 1);
+
+                    lineChart.notifyDataSetChanged(); // let the chart know it's data changed
+                    lineChart.invalidate(); // refresh
+
+                    numRespHeart++;
                 }
             });
             super.onDataReceived(respHeartRates);
@@ -192,22 +196,8 @@ public class MainActivity extends Activity {
         }
     };
 
-    private void addEntry(double heartRate) {Log.i("here987", "here");
-
-        xVals.add(String.valueOf(numSeconds+1));
-        data.addEntry(new Entry((float) heartRate, numSeconds), 0);
-        heartRateChart.notifyDataSetChanged(); // let the chart know it's data changed
-        heartRateChart.invalidate(); // refresh
-        numSeconds++;
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-//        // calculates the frequencies
-//        for (int i = 0; i < freq.length; i++) {
-//            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
-//        }
 
         Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
@@ -217,74 +207,63 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
-        heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
-        heartRateChart.setDescription("");
-        heartRateChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
-        heartRateChart.setTouchEnabled(false);
+        lineChart = (LineChart) findViewById(R.id.heartRateChart);
+        lineChart.setDescription("");
+        lineChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
+        lineChart.setTouchEnabled(false);
 
         // define info about x axis
-        XAxis xAxis = heartRateChart.getXAxis();
+        XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setTextSize(10f);
-        xAxis.setTextColor(Color.BLUE);
+        xAxis.setTextColor(Color.BLACK);
         xAxis.setDrawAxisLine(true);
         xAxis.setDrawGridLines(false);
 
         // define info about y axis
-        YAxis yAxis = heartRateChart.getAxisLeft();
-        heartRateChart.getAxisRight().setEnabled(false);
+        YAxis yAxis = lineChart.getAxisLeft();
+        lineChart.getAxisRight().setEnabled(false);
         yAxis.setAxisMinValue(0);
         yAxis.setTextSize(10f);
-        yAxis.setTextColor(Color.BLUE);
+        yAxis.setTextColor(Color.BLACK);
         yAxis.setDrawAxisLine(true);
         yAxis.setDrawGridLines(false);
 
+        // initialize the lines for Respiration/Heart Rate and SPO2
         ArrayList<Entry> valsComp1 = new ArrayList<Entry>();
         ArrayList<Entry> valsComp2 = new ArrayList<Entry>();
+        ArrayList<Entry> valsComp3 = new ArrayList<Entry>();
 
-        Entry c1e1 = new Entry(100.000f, 0); // 0 == quarter 1
-        valsComp1.add(c1e1);
-        Entry c1e2 = new Entry(107.000f, 1); // 1 == quarter 2
-        valsComp1.add(c1e2);
-        Entry c1e3 = new Entry(120.000f, 2); // 2 == quarter 3
-        valsComp1.add(c1e3);
-        Entry c1e4 = new Entry(123.000f, 3); // 3 == quarter 4
-        valsComp1.add(c1e4);
-
-        Entry c2e1 = new Entry(120.000f, 0); // 0 == quarter 1
-        valsComp2.add(c2e1);
-        Entry c2e2 = new Entry(110.000f, 1); // 1 == quarter 2
-        valsComp2.add(c2e2);
-        Entry c2e3 = new Entry(115.000f, 2); // 2 == quarter 3
-        valsComp2.add(c2e3);
-        Entry c2e4 = new Entry(132.000f, 3); // 3 == quarter 4
-        valsComp2.add(c2e4);
-
-        LineDataSet setComp1 = new LineDataSet(valsComp1, "Company 1");
+        LineDataSet setComp1 = new LineDataSet(valsComp1, "Respiration Rate");
         setComp1.setAxisDependency(YAxis.AxisDependency.LEFT);
-        LineDataSet setComp2 = new LineDataSet(valsComp2, "Company 2");
+        setComp1.setColor(Color.BLUE);
+        setComp1.setCircleColor(Color.BLUE);
+        setComp1.setCircleColorHole(Color.BLUE);
+        setComp1.setDrawValues(false);
+
+        LineDataSet setComp2 = new LineDataSet(valsComp2, "Heart Rate");
         setComp2.setAxisDependency(YAxis.AxisDependency.LEFT);
+        setComp2.setColor(Color.RED);
+        setComp2.setCircleColor(Color.RED);
+        setComp2.setCircleColorHole(Color.RED);
+        setComp2.setDrawValues(false);
+
+        LineDataSet setComp3 = new LineDataSet(valsComp3, "SPO2");
+        setComp3.setAxisDependency(YAxis.AxisDependency.LEFT);
+        setComp3.setColor(Color.GREEN);
+        setComp3.setCircleColor(Color.GREEN);
+        setComp3.setCircleColorHole(Color.GREEN);
+        setComp3.setDrawValues(false);
 
         // use the interface ILineDataSet
         ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
         dataSets.add(setComp1);
         dataSets.add(setComp2);
-
-        //ArrayList<String> xVals = new ArrayList<String>();
-        xVals.add("1.Q");
-        xVals.add("2.Q");
-        xVals.add("3.Q");
-        xVals.add("4.Q");
+        dataSets.add(setComp3);
 
         data = new LineData(xVals, dataSets);
-        heartRateChart.setData(data);
-        heartRateChart.invalidate(); // refresh
-
-        // add entries to the "data" object
-        xVals.add("5");
-        data.addEntry(new Entry(169.000f, 4), 0);
-        heartRateChart.notifyDataSetChanged(); // let the chart know it's data changed
-        heartRateChart.invalidate(); // refresh
+        lineChart.setData(data);
+        lineChart.invalidate(); // refresh the graph
 
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();

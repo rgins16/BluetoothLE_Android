@@ -813,11 +813,11 @@ public class Brsp {
         protected void onPostExecute(String result) {
 
             // do stuff
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+//            try {
+//                Thread.sleep(2000);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
 
             // make the async task repeat itself
             smoothFreq = new SmoothFreq();
