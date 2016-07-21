@@ -3,6 +3,8 @@ package com.example.robbieginsburg.test;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
@@ -678,69 +680,92 @@ public class Brsp {
         @Override
         // perform the smooth and freq functions
         protected String doInBackground(String... params) {
-            //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
-
-            //if(REDLED.length % 100 == 0) Log.d("REDLED.Length", "Length: " + REDLED.length);
 
             // checks to make sure the buffer is full
             if(REDLED.length == MAX_DATA) {
 
-//                byte[] smooth = new byte[1560];
-//                byte[] hanning = new byte[31];
-//                byte[] afterShift = new byte[1530];
-//
-//                byte[] tmp = new byte[30];
-//                byte[] tmp2 = new byte[30];
-//
-//                final int WINDOWLENGTH = 31;
-//
-//                // **************************************************************** smooth function
-//                // gets the first 30 elements from REDLED and stores them in tmp
-//                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
-//                // gets the last 30 elements from REDLED and stores them in tmp2
-//                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
-//
-//                // reverses them
-//                // will be added to the smooth array
-//                Collections.reverse(Arrays.asList(tmp));
-//                Collections.reverse(Arrays.asList(tmp2));
-//
-//                // creates the smooth array
-//                System.arraycopy(tmp, 0, smooth, 0, 0);
-//                System.arraycopy(REDLED, 0, smooth, WINDOWLENGTH, 1500);
-//                System.arraycopy(tmp2, 0, smooth, 1530, 30);
-//
-//                // creates the hanning array and gets the sum of all the elements in it
-//                byte sum = 0;
-//                for (int i = 0; i < WINDOWLENGTH; i++) {
-//                    hanning[i] = (byte) (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
-//                    sum += hanning[i];
-//                }
-//
-//                // convolute the above arrays
-//                for (int i = 0; i < hanning.length; i++) {
-//                    hanning[i] = (byte) (hanning[i] / sum);
-//                }
-//
-//                //convolve the two arrays
-//
-//                // **************************************************************** smooth function
-//
-//                System.arraycopy(smooth, 31, afterShift, 0, afterShift.length);
+                final int WINDOWLENGTH = 31;
+
+                double[] appendedArray = new double[MAX_DATA + 60];
+                double[] hanning = new double[WINDOWLENGTH];
+
+                // used for building the array of size 1560
+                double[] tmp = new double[WINDOWLENGTH - 1];
+                double[] tmp2 = new double[WINDOWLENGTH - 1];
+
+                // **************************************************************** smooth function
+                // gets the first 30 elements from REDLED and stores them in tmp
+                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
+                // gets the last 30 elements from REDLED and stores them in tmp2
+                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
+
+                // reverses them
+                // will be added to the smooth array
+                Collections.reverse(Arrays.asList(tmp));
+                Collections.reverse(Arrays.asList(tmp2));
+
+                // creates the appended array
+                System.arraycopy(tmp, 0, appendedArray, 0, 0);
+                System.arraycopy(REDLED, 0, appendedArray, WINDOWLENGTH, 1500);
+                System.arraycopy(tmp2, 0, appendedArray, 1530, 30);
+
+                // creates the hanning array and gets the sum of all the elements in it
+                double sum = 0;
+                for (int i = 0; i < WINDOWLENGTH; i++) {
+                    hanning[i] = (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
+                    sum += hanning[i];
+                }
+                for (int i = 0; i < hanning.length; i++) {
+                    hanning[i] = (hanning[i] / sum);
+                }
+
+                //convolution process
+                /*for (i=0; i<nconv; i++)
+                {
+                    i1 = i;
+                    tmp = 0.0;
+                    for (j=0; j<lenB; j++)
+                    {
+                        if(i1>=0 && i1<lenA)
+                            tmp = tmp + (A[i1]*B[j]);
+
+                        i1 = i1-1;
+                        C[i] = tmp;
+                    }
+                }*/
+
+                // start of convolution **********
+                double[] convolutedArray = new double[appendedArray.length + hanning.length - 1];
+
+                for(int i = 0; i < convolutedArray.length; i++){
+                    int j = i;
+                    double tmpConv = 0.0;
+
+                    for(int k = 0; k < hanning.length; k++){
+
+                        if(j >= 0 && j < appendedArray.length) {
+                            tmpConv += (appendedArray[j] * hanning[k]);
+                        }
+
+                        j -= 1;
+                        convolutedArray[i] = tmpConv;
+                    }
+                }
+                // end of convolution **********
+
+                double[] smoothedArray = new double[1530];
+                System.arraycopy(appendedArray, WINDOWLENGTH-1, smoothedArray, 0, smoothedArray.length);
+                Log.d("length of smooth array", "length of smooth array: " + smoothedArray.length);
+                // **************************************************************** smooth function
+
 
                 // **************************************************************** freq function
-                // convert byte array to double array
-                /*ByteBuffer buf = ByteBuffer.wrap(smooth);
-                double[] smoothDouble = new double[smooth.length / 8];
-                for (int i = 0; i < smoothDouble.length; i++)
-                    smoothDouble[i] = buf.getLong(i*8);*/
-
                 // start of fft transform ********************************************************
                 // Computes the discrete Fourier transform (DFT) of the given vector.
                 // All the array arguments must have the same length.
-                double[] inReal = REDLED;
-                double[] inImag = new double[REDLED.length];
-                double[] fftOutput = new double[REDLED.length];
+                double[] inReal = smoothedArray;
+                double[] inImag = new double[smoothedArray.length];
+                double[] fftOutput = new double[smoothedArray.length];
 
                 int n = inReal.length;
                 for (int i = 0; i < n; i++) {  // For each output element
@@ -791,9 +816,6 @@ public class Brsp {
                 double[] respHeartRates = new double[2];
                 respHeartRates[0] = respiratorRate;
                 respHeartRates[1] = heartRate;
-
-                // call addToBuffer to pass Respiration/Heart Rate to MainActivity
-                //addToBuffer(_inputBuffer, respHeartRates);
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
                 //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
