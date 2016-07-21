@@ -888,7 +888,13 @@ public class Brsp {
 
             boolean lookForMax = true;
 
-            for(int i = 0; i < LED.length; i++) {
+            for(int i = 0; i + LOOKAHEAD < LED.length; i++) {
+
+//                // there are no more peaks to be found
+//                if(i + LOOKAHEAD >= LED.length) {
+//                    Log.i("this should break", "this should break");
+//                    break;
+//                }
 
                 if(LED[i] > maximum || maximum == 0.0) {
                     maximum = LED[i];
@@ -916,11 +922,12 @@ public class Brsp {
                         //minimum = LED[i];
                         lookForMax = false;
 
-                        // there are no more peaks to be found
-                        if(i + LOOKAHEAD >= LED.length) {
-                            Log.i("this should break", "this should break");
-                            break;
-                        }
+//                        Log.i("this should break", "" + (i + LOOKAHEAD));
+//                        // there are no more peaks to be found
+//                        if(i + LOOKAHEAD >= LED.length) {
+//                            Log.i("this should break", "this should break");
+//                            break;
+//                        }
                     }
                 }
                 else if(LED[i] > minimum  && !lookForMax) {
@@ -940,11 +947,12 @@ public class Brsp {
                         //maximum = LED[i];
                         lookForMax = true;
 
-                        // there are no more peaks to be found
-                        if(i + LOOKAHEAD >= LED.length) {
-                            Log.i("this should break", "this should break");
-                            break;
-                        }
+//                        Log.i("this should break", "" + (i + LOOKAHEAD));
+//                        // there are no more peaks to be found
+//                        if(i + LOOKAHEAD >= LED.length) {
+//                            Log.i("this should break", "this should break");
+//                            break;
+//                        }
                     }
                 }
 //                else{
@@ -960,6 +968,10 @@ public class Brsp {
             double[] allPeaks = new double[maxima.length + minima.length];
             System.arraycopy(maxima, 0, allPeaks, 0, maxima.length);
             System.arraycopy(minima, 0, allPeaks, maxima.length, minima.length);
+
+            for(int j = 0; j < allPeaks.length; j++){
+                Log.d("allpeaks" , "it is: " + allPeaks[j]);
+            }
 
             return allPeaks;
         }
