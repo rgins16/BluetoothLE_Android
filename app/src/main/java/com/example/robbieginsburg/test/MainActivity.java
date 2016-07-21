@@ -73,7 +73,7 @@ public class MainActivity extends Activity {
         }
 
         @Override
-        public void onDataReceived(final double[] respHeartRates) {
+        public void onDataReceived(final double[] respHeartSpo2Rates) {
             //Log.d(TAG, "onDataReceived thread id:" + Process.myTid());
             runOnUiThread(new Runnable() {
                 @Override
@@ -82,8 +82,8 @@ public class MainActivity extends Activity {
                     //Log.d("RespHeartRates2", "Heart Rate: " + respHeartRates[1]);
 
                     xVals.add(String.valueOf(numRespHeart + 1));
-                    data.addEntry(new Entry((float) respHeartRates[0], numRespHeart), 0);
-                    data.addEntry(new Entry((float) respHeartRates[1], numRespHeart), 1);
+                    data.addEntry(new Entry((float) respHeartSpo2Rates[0], numRespHeart), 0);
+                    data.addEntry(new Entry((float) respHeartSpo2Rates[1], numRespHeart), 1);
 
                     lineChart.notifyDataSetChanged(); // let the chart know it's data changed
                     lineChart.invalidate(); // refresh
@@ -91,7 +91,7 @@ public class MainActivity extends Activity {
                     numRespHeart++;
                 }
             });
-            super.onDataReceived(respHeartRates);
+            super.onDataReceived(respHeartSpo2Rates);
         }
 
         @Override
@@ -237,22 +237,25 @@ public class MainActivity extends Activity {
         LineDataSet setComp1 = new LineDataSet(valsComp1, "Respiration Rate");
         setComp1.setAxisDependency(YAxis.AxisDependency.LEFT);
         setComp1.setColor(Color.BLUE);
-        setComp1.setCircleColor(Color.BLUE);
-        setComp1.setCircleColorHole(Color.BLUE);
+        setComp1.setDrawCircles(false);
+        //setComp1.setCircleColor(Color.BLUE);
+        //setComp1.setCircleColorHole(Color.BLUE);
         setComp1.setDrawValues(false);
 
         LineDataSet setComp2 = new LineDataSet(valsComp2, "Heart Rate");
         setComp2.setAxisDependency(YAxis.AxisDependency.LEFT);
         setComp2.setColor(Color.RED);
-        setComp2.setCircleColor(Color.RED);
-        setComp2.setCircleColorHole(Color.RED);
+        setComp2.setDrawCircles(false);
+        //setComp2.setCircleColor(Color.RED);
+        //setComp2.setCircleColorHole(Color.RED);
         setComp2.setDrawValues(false);
 
         LineDataSet setComp3 = new LineDataSet(valsComp3, "SPO2");
         setComp3.setAxisDependency(YAxis.AxisDependency.LEFT);
         setComp3.setColor(Color.GREEN);
-        setComp3.setCircleColor(Color.GREEN);
-        setComp3.setCircleColorHole(Color.GREEN);
+        setComp3.setDrawCircles(false);
+        //setComp3.setCircleColor(Color.GREEN);
+        //setComp3.setCircleColorHole(Color.GREEN);
         setComp3.setDrawValues(false);
 
         // use the interface ILineDataSet

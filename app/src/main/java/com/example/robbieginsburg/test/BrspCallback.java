@@ -29,7 +29,7 @@ public abstract class BrspCallback {
 
     }
 
-    public void onDataReceived(double[] respHeartRates) {
+    public void onDataReceived(double[] respHeartSpo2Rates) {
 
     }
 

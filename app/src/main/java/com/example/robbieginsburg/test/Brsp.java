@@ -684,88 +684,15 @@ public class Brsp {
             // checks to make sure the buffer is full
             if(REDLED.length == MAX_DATA) {
 
-                final int WINDOWLENGTH = 31;
-
-                double[] appendedArray = new double[MAX_DATA + 60];
-                double[] hanning = new double[WINDOWLENGTH];
-
-                // used for building the array of size 1560
-                double[] tmp = new double[WINDOWLENGTH - 1];
-                double[] tmp2 = new double[WINDOWLENGTH - 1];
-
-                // **************************************************************** smooth function
-                // gets the first 30 elements from REDLED and stores them in tmp
-                System.arraycopy(REDLED, 0, tmp, 0, WINDOWLENGTH - 1);
-                // gets the last 30 elements from REDLED and stores them in tmp2
-                System.arraycopy(REDLED, 1469, tmp2, 0, WINDOWLENGTH - 1);
-
-                // reverses them
-                // will be added to the smooth array
-                Collections.reverse(Arrays.asList(tmp));
-                Collections.reverse(Arrays.asList(tmp2));
-
-                // creates the appended array
-                System.arraycopy(tmp, 0, appendedArray, 0, 0);
-                System.arraycopy(REDLED, 0, appendedArray, WINDOWLENGTH, 1500);
-                System.arraycopy(tmp2, 0, appendedArray, 1530, 30);
-
-                // creates the hanning array and gets the sum of all the elements in it
-                double sum = 0;
-                for (int i = 0; i < WINDOWLENGTH; i++) {
-                    hanning[i] = (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
-                    sum += hanning[i];
-                }
-                for (int i = 0; i < hanning.length; i++) {
-                    hanning[i] = (hanning[i] / sum);
-                }
-
-                //convolution process
-                /*for (i=0; i<nconv; i++)
-                {
-                    i1 = i;
-                    tmp = 0.0;
-                    for (j=0; j<lenB; j++)
-                    {
-                        if(i1>=0 && i1<lenA)
-                            tmp = tmp + (A[i1]*B[j]);
-
-                        i1 = i1-1;
-                        C[i] = tmp;
-                    }
-                }*/
-
-                // start of convolution **********
-                double[] convolutedArray = new double[appendedArray.length + hanning.length - 1];
-
-                for(int i = 0; i < convolutedArray.length; i++){
-                    int j = i;
-                    double tmpConv = 0.0;
-
-                    for(int k = 0; k < hanning.length; k++){
-
-                        if(j >= 0 && j < appendedArray.length) {
-                            tmpConv += (appendedArray[j] * hanning[k]);
-                        }
-
-                        j -= 1;
-                        convolutedArray[i] = tmpConv;
-                    }
-                }
-                // end of convolution **********
-
-                double[] smoothedArray = new double[1530];
-                System.arraycopy(appendedArray, WINDOWLENGTH-1, smoothedArray, 0, smoothedArray.length);
-                Log.d("length of smooth array", "length of smooth array: " + smoothedArray.length);
-                // **************************************************************** smooth function
-
+                // performs the smooth function on the REDLED/IRLED data
+                double[] smoothREDLED = smooth(REDLED);
+                double[] smoothIRLED = smooth(IRLED);
 
                 // **************************************************************** freq function
-                // start of fft transform ********************************************************
-                // Computes the discrete Fourier transform (DFT) of the given vector.
-                // All the array arguments must have the same length.
-                double[] inReal = smoothedArray;
-                double[] inImag = new double[smoothedArray.length];
-                double[] fftOutput = new double[smoothedArray.length];
+                // start of fft transform **********
+                double[] inReal = smoothREDLED;
+                double[] inImag = new double[smoothREDLED.length];
+                double[] fftOutput = new double[smoothREDLED.length];
 
                 int n = inReal.length;
                 for (int i = 0; i < n; i++) {  // For each output element
@@ -777,7 +704,7 @@ public class Brsp {
                     }
                     fftOutput[i] = sumreal;
                 }
-                // end of fft transform ********************************************************
+                // end of fft transform **********
 
                 // the indexes of the freq array where the values are between .2/.5 are 6/15
                 // the indexes of the freq array where the values are between .9/1.4 are 27/42
@@ -810,19 +737,46 @@ public class Brsp {
                 }
 
                 // takes indexes of max and look them up in freq array and multiply by 50
-                double respiratorRate = freq[6 + respMaxIndex] * 50;
-                double heartRate = freq[27 + heartMaxIndex] * 50;
+                double respiratorRate = freq[6 + respMaxIndex] * FS;
+                double heartRate = freq[27 + heartMaxIndex] * FS;
 
-                double[] respHeartRates = new double[2];
-                respHeartRates[0] = respiratorRate;
-                respHeartRates[1] = heartRate;
+                double[] respHeartSpo2Rates = new double[2];
+                respHeartSpo2Rates[0] = respiratorRate;
+                respHeartSpo2Rates[1] = heartRate;
+                // **************************************************************** freq function
+
+
+                // performs the peak detect function on the smoothed REDLED/IRLED data
+                // in order to find ther max peaks
+                double[] maxPeaksREDLED = maxPeakDetect(smoothREDLED);
+                double[] maxPeaksIRLED = maxPeakDetect(smoothIRLED);
+
+                // find mean of max peak arrays
+                double meanMaxPeaksREDLED = 0.0;
+                double meanMaxPeaksIRLED = 0.0;
+                for(int i = 0; i < maxPeaksREDLED.length - 1; i++) {
+                    meanMaxPeaksREDLED += Math.abs(maxPeaksREDLED[i] - maxPeaksREDLED[i+1]);
+                    meanMaxPeaksIRLED += Math.abs(maxPeaksIRLED[i] - maxPeaksIRLED[i+1]);
+                }
+                meanMaxPeaksREDLED /= maxPeaksREDLED.length;
+                meanMaxPeaksIRLED /= maxPeaksIRLED.length;
+
+                // find min of max peak arrays
+                Arrays.sort(maxPeaksREDLED);
+                Arrays.sort(maxPeaksIRLED);
+                double minMaxPeaksREDLED = maxPeaksREDLED[0];
+                double minMaxPeaksIRLED = maxPeaksIRLED[0];
+
+                // calculate SPO2
+                double spo2 = (meanMaxPeaksREDLED / minMaxPeaksREDLED) / (meanMaxPeaksIRLED / minMaxPeaksIRLED);
+                Log.d("SPO@ value", "SPO@ value: " + spo2);
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
                 //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
 
                 // call addToBuffer to pass Respiration/Heart Rate to MainActivity
-                addToBuffer(_inputBuffer, respHeartRates);
-                _brspCallback.onDataReceived(respHeartRates);
+                addToBuffer(_inputBuffer, respHeartSpo2Rates);
+                _brspCallback.onDataReceived(respHeartSpo2Rates);
             }
             else{
                 Log.d("redlength", "redledlength: " + REDLED.length);
@@ -845,9 +799,118 @@ public class Brsp {
             smoothFreq = new SmoothFreq();
             smoothFreq.execute();
         }
-    }
 
+        // start of smooth function
+        public double[] smooth(double[] LED) {
 
+            final int WINDOWLENGTH = 31;
+
+            double[] appendedArray = new double[MAX_DATA + 60];
+            double[] hanning = new double[WINDOWLENGTH];
+
+            // used for building the array of size 1560
+            double[] tmp = new double[WINDOWLENGTH - 1];
+            double[] tmp2 = new double[WINDOWLENGTH - 1];
+
+            // gets the first 30 elements from REDLED and stores them in tmp
+            System.arraycopy(LED, 0, tmp, 0, WINDOWLENGTH - 1);
+            // gets the last 30 elements from REDLED and stores them in tmp2
+            System.arraycopy(LED, 1469, tmp2, 0, WINDOWLENGTH - 1);
+
+            // reverses them
+            // will be added to the smooth array
+            Collections.reverse(Arrays.asList(tmp));
+            Collections.reverse(Arrays.asList(tmp2));
+
+            // creates the appended array
+            System.arraycopy(tmp, 0, appendedArray, 0, 0);
+            System.arraycopy(LED, 0, appendedArray, WINDOWLENGTH, 1500);
+            System.arraycopy(tmp2, 0, appendedArray, 1530, 30);
+
+            // creates the hanning array and gets the sum of all the elements in it
+            double sum = 0;
+            for (int i = 0; i < WINDOWLENGTH; i++) {
+                hanning[i] = (.5 - .5 * Math.cos((2 * Math.PI * i) / (WINDOWLENGTH - 1)));
+                sum += hanning[i];
+            }
+            for (int i = 0; i < hanning.length; i++) {
+                hanning[i] = (hanning[i] / sum);
+            }
+
+            // start of convolution **********
+            double[] convolutedArray = new double[appendedArray.length + hanning.length - 1];
+
+            for(int i = 0; i < convolutedArray.length; i++){
+                int j = i;
+                double tmpConv = 0.0;
+
+                for(int k = 0; k < hanning.length; k++){
+
+                    if(j >= 0 && j < appendedArray.length) {
+                        tmpConv += (appendedArray[j] * hanning[k]);
+                    }
+
+                    j -= 1;
+                    convolutedArray[i] = tmpConv;
+                }
+            }
+            // end of convolution **********
+
+            double[] smoothedArray = new double[1530];
+            System.arraycopy(appendedArray, WINDOWLENGTH-1, smoothedArray, 0, smoothedArray.length);
+
+            return smoothedArray;
+        }
+        // end of smooth function
+
+        // start max peak detect function
+        public double[] maxPeakDetect(double[] LED) {
+
+            double[] maxima = new double[0];
+            //double[] minima = new double[0];
+
+            final int lookAhead = 300;
+
+            double maximum = 0.0;
+            double minimum = 0.0;
+
+            boolean lookForMax = true;
+
+            for(int i = 0; i < LED.length; i++) {
+
+                if(LED[i] > maximum || maximum == 0.0) {
+                    maximum = LED[i];
+                }
+
+                if(LED[i] < minimum || minimum == 0.0) {
+                    minimum = LED[i];
+                }
+
+                if(lookForMax) {
+
+                    if(LED[i] < maximum) {
+
+                        // adds the maxima to the array
+                        double[] tmpMaxima = new double[maxima.length + 1];
+                        System.arraycopy(maxima, 0, tmpMaxima, 0, maxima.length);
+                        tmpMaxima[tmpMaxima.length - 1] = maximum;
+                        maxima = tmpMaxima;
+
+                        minimum = LED[i];
+                        lookForMax = false;
+                    }
+                }
+                else {
+                    if(LED[i] > minimum) {
+                        lookForMax = true;
+                    }
+                }
+            }
+
+            return maxima;
+        }
+        // end max peak detect function
+    } // end async task
 
 
     /**
