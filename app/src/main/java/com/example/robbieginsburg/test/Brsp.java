@@ -875,7 +875,7 @@ public class Brsp {
         }
         // end of smooth function
 
-        // start max peak detect function
+        // start peak detect function
         public double[] peakDetect(double[] LED) {
 
             double[] maxima = new double[0];
@@ -891,21 +891,22 @@ public class Brsp {
 
             for(int i = 0; i + LOOKAHEAD < LED.length; i++) {
 
-                if(LED[i] > maximum/* || maximum == 0.0*/) {
+                // puts the next 300 values into an array, and sorts it to find the max and min value
+                double[] next300Values = new double[LOOKAHEAD];
+                System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
+                Arrays.sort(next300Values);
+                double next300ValuesMax = next300Values[next300Values.length-1];
+                double next300ValuesMin = next300Values[0];
+
+                if(LED[i] > maximum) {
                     maximum = LED[i];
                 }
 
-                if(LED[i] < minimum/* || minimum == 0.0*/) {
+                if(LED[i] < minimum) {
                     minimum = LED[i];
                 }
 
                 if(LED[i] < maximum && !max) {
-
-                    // puts the next 300 values into an array, ans sorts it to find thhe max value
-                    double[] next300Values = new double[LOOKAHEAD];
-                    System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
-                    Arrays.sort(next300Values);
-                    double next300ValuesMax = next300Values[next300Values.length-1];
 
                     if(next300ValuesMax < maximum) {
 
@@ -921,11 +922,6 @@ public class Brsp {
                 }
 
                 if(LED[i] > minimum  && min) {
-                    // puts the next 300 values into an array, ans sorts it to find thhe max value
-                    double[] next300Values = new double[LOOKAHEAD];
-                    System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
-                    Arrays.sort(next300Values);
-                    double next300ValuesMin = next300Values[0];
 
                     if(next300ValuesMin > minimum) {
 
