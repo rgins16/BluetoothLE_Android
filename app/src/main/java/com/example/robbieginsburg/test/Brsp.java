@@ -748,28 +748,28 @@ public class Brsp {
 
                 // performs the peak detect function on the smoothed REDLED/IRLED data
                 // in order to find ther max peaks
-                double[] maxPeaksREDLED = maxPeakDetect(smoothREDLED);
-                double[] maxPeaksIRLED = maxPeakDetect(smoothIRLED);
+                double[] peaksREDLED = peakDetect(smoothREDLED);
+                double[] peaksIRLED = peakDetect(smoothIRLED);
 
                 // find mean of max peak arrays
-                double meanMaxPeaksREDLED = 0.0;
-                double meanMaxPeaksIRLED = 0.0;
-                for(int i = 0; i < maxPeaksREDLED.length - 1; i++) {
-                    meanMaxPeaksREDLED += Math.abs(maxPeaksREDLED[i] - maxPeaksREDLED[i+1]);
-                    meanMaxPeaksIRLED += Math.abs(maxPeaksIRLED[i] - maxPeaksIRLED[i+1]);
+                double meanPeaksREDLED = 0.0;
+                double meanPeaksIRLED = 0.0;
+                for(int i = 0; i < peaksREDLED.length - 1; i++) {
+                    meanPeaksREDLED += Math.abs(peaksREDLED[i] - peaksREDLED[i+1]);
+                    meanPeaksIRLED += Math.abs(peaksIRLED[i] - peaksIRLED[i+1]);
                 }
-                meanMaxPeaksREDLED /= maxPeaksREDLED.length;
-                meanMaxPeaksIRLED /= maxPeaksIRLED.length;
+                meanPeaksREDLED /= peaksREDLED.length;
+                meanPeaksIRLED /= peaksIRLED.length;
 
                 // find min of max peak arrays
-                Arrays.sort(maxPeaksREDLED);
-                Arrays.sort(maxPeaksIRLED);
-                double minMaxPeaksREDLED = maxPeaksREDLED[0];
-                double minMaxPeaksIRLED = maxPeaksIRLED[0];
+                Arrays.sort(peaksREDLED);
+                Arrays.sort(peaksIRLED);
+                double minMaxPeaksREDLED = peaksREDLED[0];
+                double minMaxPeaksIRLED = peaksIRLED[0];
 
                 // calculate SPO2
-                double spo2 = (meanMaxPeaksREDLED / minMaxPeaksREDLED) / (meanMaxPeaksIRLED / minMaxPeaksIRLED);
-                Log.d("SPO@ value", "SPO@ value: " + spo2);
+                double spo2 = (meanPeaksREDLED / minMaxPeaksREDLED) / (meanPeaksIRLED / minMaxPeaksIRLED);
+                Log.d("SPO2 value", "SPO2 value: " + spo2);
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
                 //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
@@ -864,12 +864,12 @@ public class Brsp {
         // end of smooth function
 
         // start max peak detect function
-        public double[] maxPeakDetect(double[] LED) {
+        public double[] peakDetect(double[] LED) {
 
             double[] maxima = new double[0];
-            //double[] minima = new double[0];
+            double[] minima = new double[0];
 
-            final int lookAhead = 300;
+            final int LOOKAHEAD = 300;
 
             double maximum = 0.0;
             double minimum = 0.0;
@@ -886,9 +886,14 @@ public class Brsp {
                     minimum = LED[i];
                 }
 
-                if(lookForMax) {
+                if(LED[i] < maximum && lookForMax) {
 
-                    if(LED[i] < maximum) {
+                    double[] next300Values = new double[LOOKAHEAD];
+                    System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
+                    Arrays.sort(next300Values);
+                    double next300ValuesMax = next300Values[next300Values.length-1];
+
+                    if(next300ValuesMax < maximum) {
 
                         // adds the maxima to the array
                         double[] tmpMaxima = new double[maxima.length + 1];
@@ -896,18 +901,42 @@ public class Brsp {
                         tmpMaxima[tmpMaxima.length - 1] = maximum;
                         maxima = tmpMaxima;
 
-                        minimum = LED[i];
+                        //minimum = LED[i];
                         lookForMax = false;
+
+                        // there are no more peaks to be found
+                        if(i + LOOKAHEAD >= LED.length) break;
                     }
                 }
-                else {
-                    if(LED[i] > minimum) {
+                else if(LED[i] > minimum  && !lookForMax) {
+                    double[] next300Values = new double[LOOKAHEAD];
+                    System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
+                    Arrays.sort(next300Values);
+                    double next300ValuesMin = next300Values[0];
+
+                    if(next300ValuesMin > minimum) {
+
+                        // adds the minima to the array
+                        double[] tmpMinima = new double[minima.length + 1];
+                        System.arraycopy(minima, 0, tmpMinima, 0, minima.length);
+                        tmpMinima[tmpMinima.length - 1] = minimum;
+                        minima = tmpMinima;
+
+                        //maximum = LED[i];
                         lookForMax = true;
+
+                        // there are no more peaks to be found
+                        if(i + LOOKAHEAD >= LED.length) break;
                     }
                 }
             }
 
-            return maxima;
+            // combines the minima and maxima into one array
+            double[] allPeaks = new double[maxima.length + minima.length];
+            System.arraycopy(maxima, 0, allPeaks, 0, maxima.length);
+            System.arraycopy(minima, 0, allPeaks, maxima.length, minima.length);
+
+            return allPeaks;
         }
         // end max peak detect function
     } // end async task
