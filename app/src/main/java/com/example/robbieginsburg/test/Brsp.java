@@ -969,7 +969,7 @@ public class Brsp {
             System.arraycopy(maxima, 0, allPeaks, 0, maxima.length);
             System.arraycopy(minima, 0, allPeaks, maxima.length, minima.length);
 
-            for(int j = 0; j < allPeaks.length; j++){
+            for(int j = 0; j < allPeaks.length; j++) {
                 Log.d("allpeaks" , "it is: " + allPeaks[j]);
             }
 
