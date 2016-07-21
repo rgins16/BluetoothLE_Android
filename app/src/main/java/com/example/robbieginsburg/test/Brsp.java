@@ -684,15 +684,15 @@ public class Brsp {
             // checks to make sure the buffer is full
             if(REDLED.length == MAX_DATA) {
 
-                // performs the smooth function on the REDLED/IRLED data
-                double[] smoothREDLED = smooth(REDLED);
-                double[] smoothIRLED = smooth(IRLED);
+                // performs the smooth function on the REDLED data
+                double[] smoothedREDLED = smooth(REDLED);
+                double[] smoothedIRLED = smooth(IRLED);
 
                 // **************************************************************** freq function
                 // start of fft transform **********
-                double[] inReal = smoothREDLED;
-                double[] inImag = new double[smoothREDLED.length];
-                double[] fftOutput = new double[smoothREDLED.length];
+                double[] inReal = smoothedREDLED;
+                double[] inImag = new double[smoothedREDLED.length];
+                double[] fftOutput = new double[smoothedREDLED.length];
 
                 int n = inReal.length;
                 for (int i = 0; i < n; i++) {  // For each output element
@@ -746,10 +746,22 @@ public class Brsp {
                 // **************************************************************** freq function
 
 
+                // performs the smooth function on the REDLED/IRLED data
+                double[] smoothedREDLEDForPeakDetect = smooth(smoothedREDLED);
+                double[] smoothedIRLEDForPeakDetect = smooth(smoothedIRLED);
+
+                // does some data shifting for REDLED/IRLED after smoothing them for peak detect
+                double[] tmpSmoothedREDLEDForPeakDetect = new double[smoothedREDLEDForPeakDetect.length - 180];
+                double[] tmpSmoothedIRLEDForPeakDetect = new double[smoothedIRLEDForPeakDetect.length - 180];
+                System.arraycopy(smoothedREDLEDForPeakDetect, 30, tmpSmoothedREDLEDForPeakDetect, 0, tmpSmoothedREDLEDForPeakDetect.length);
+                System.arraycopy(smoothedIRLEDForPeakDetect, 30, tmpSmoothedIRLEDForPeakDetect, 0, tmpSmoothedIRLEDForPeakDetect.length);
+                smoothedREDLEDForPeakDetect = tmpSmoothedREDLEDForPeakDetect;
+                smoothedIRLEDForPeakDetect = tmpSmoothedIRLEDForPeakDetect;
+
                 // performs the peak detect function on the smoothed REDLED/IRLED data
                 // in order to find ther max peaks
-                double[] peaksREDLED = peakDetect(smoothREDLED);
-                double[] peaksIRLED = peakDetect(smoothIRLED);
+                double[] peaksREDLED = peakDetect(smoothedREDLEDForPeakDetect);
+                double[] peaksIRLED = peakDetect(smoothedIRLEDForPeakDetect);
 
                 // find mean of max peak arrays
                 double meanPeaksREDLED = 0.0;
@@ -905,7 +917,10 @@ public class Brsp {
                         lookForMax = false;
 
                         // there are no more peaks to be found
-                        if(i + LOOKAHEAD >= LED.length) break;
+                        if(i + LOOKAHEAD >= LED.length) {
+                            Log.i("this should break", "this should break");
+                            break;
+                        }
                     }
                 }
                 else if(LED[i] > minimum  && !lookForMax) {
@@ -926,9 +941,19 @@ public class Brsp {
                         lookForMax = true;
 
                         // there are no more peaks to be found
-                        if(i + LOOKAHEAD >= LED.length) break;
+                        if(i + LOOKAHEAD >= LED.length) {
+                            Log.i("this should break", "this should break");
+                            break;
+                        }
                     }
                 }
+//                else{
+//                    // there are no more peaks to be found
+//                    if(i + LOOKAHEAD >= LED.length) {
+//                        Log.i("this should break", "this should break");
+//                        break;
+//                    }
+//                }
             }
 
             // combines the minima and maxima into one array
