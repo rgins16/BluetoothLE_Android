@@ -886,26 +886,22 @@ public class Brsp {
             double maximum = 0.0;
             double minimum = 0.0;
 
-            boolean lookForMax = true;
+            boolean min = true;
+            boolean max = false;
 
             for(int i = 0; i + LOOKAHEAD < LED.length; i++) {
 
-//                // there are no more peaks to be found
-//                if(i + LOOKAHEAD >= LED.length) {
-//                    Log.i("this should break", "this should break");
-//                    break;
-//                }
-
-                if(LED[i] > maximum || maximum == 0.0) {
+                if(LED[i] > maximum/* || maximum == 0.0*/) {
                     maximum = LED[i];
                 }
 
-                if(LED[i] < minimum || minimum == 0.0) {
+                if(LED[i] < minimum/* || minimum == 0.0*/) {
                     minimum = LED[i];
                 }
 
-                if(LED[i] < maximum && lookForMax) {
+                if(LED[i] < maximum && !max) {
 
+                    // puts the next 300 values into an array, ans sorts it to find thhe max value
                     double[] next300Values = new double[LOOKAHEAD];
                     System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
                     Arrays.sort(next300Values);
@@ -913,24 +909,19 @@ public class Brsp {
 
                     if(next300ValuesMax < maximum) {
 
-                        // adds the maxima to the array
+                        // adds the maximum to the maxima array
                         double[] tmpMaxima = new double[maxima.length + 1];
                         System.arraycopy(maxima, 0, tmpMaxima, 0, maxima.length);
                         tmpMaxima[tmpMaxima.length - 1] = maximum;
                         maxima = tmpMaxima;
 
-                        //minimum = LED[i];
-                        lookForMax = false;
-
-//                        Log.i("this should break", "" + (i + LOOKAHEAD));
-//                        // there are no more peaks to be found
-//                        if(i + LOOKAHEAD >= LED.length) {
-//                            Log.i("this should break", "this should break");
-//                            break;
-//                        }
+                        min = true;
+                        max = true;
                     }
                 }
-                else if(LED[i] > minimum  && !lookForMax) {
+
+                if(LED[i] > minimum  && min) {
+                    // puts the next 300 values into an array, ans sorts it to find thhe max value
                     double[] next300Values = new double[LOOKAHEAD];
                     System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
                     Arrays.sort(next300Values);
@@ -938,40 +929,22 @@ public class Brsp {
 
                     if(next300ValuesMin > minimum) {
 
-                        // adds the minima to the array
+                        // adds the minimum to the minima array
                         double[] tmpMinima = new double[minima.length + 1];
                         System.arraycopy(minima, 0, tmpMinima, 0, minima.length);
                         tmpMinima[tmpMinima.length - 1] = minimum;
                         minima = tmpMinima;
 
-                        //maximum = LED[i];
-                        lookForMax = true;
-
-//                        Log.i("this should break", "" + (i + LOOKAHEAD));
-//                        // there are no more peaks to be found
-//                        if(i + LOOKAHEAD >= LED.length) {
-//                            Log.i("this should break", "this should break");
-//                            break;
-//                        }
+                        min = false;
+                        max = false;
                     }
                 }
-//                else{
-//                    // there are no more peaks to be found
-//                    if(i + LOOKAHEAD >= LED.length) {
-//                        Log.i("this should break", "this should break");
-//                        break;
-//                    }
-//                }
             }
 
             // combines the minima and maxima into one array
             double[] allPeaks = new double[maxima.length + minima.length];
             System.arraycopy(maxima, 0, allPeaks, 0, maxima.length);
             System.arraycopy(minima, 0, allPeaks, maxima.length, minima.length);
-
-            for(int j = 0; j < allPeaks.length; j++) {
-                Log.d("allpeaks" , "it is: " + allPeaks[j]);
-            }
 
             return allPeaks;
         }
