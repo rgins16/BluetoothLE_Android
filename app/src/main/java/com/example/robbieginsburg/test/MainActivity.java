@@ -84,6 +84,7 @@ public class MainActivity extends Activity {
                     xVals.add(String.valueOf(numRespHeart + 1));
                     data.addEntry(new Entry((float) respHeartSpo2Rates[0], numRespHeart), 0);
                     data.addEntry(new Entry((float) respHeartSpo2Rates[1], numRespHeart), 1);
+                    data.addEntry(new Entry((float) respHeartSpo2Rates[2], numRespHeart), 2);
 
                     lineChart.notifyDataSetChanged(); // let the chart know it's data changed
                     lineChart.invalidate(); // refresh

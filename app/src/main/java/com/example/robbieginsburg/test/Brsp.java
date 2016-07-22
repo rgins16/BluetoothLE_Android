@@ -699,6 +699,8 @@ public class Brsp {
             // checks to make sure the buffer is full
             if(REDLED.length == MAX_DATA) {
 
+                double[] respHeartSpo2Rates = new double[3];
+
                 // performs the smooth function on the REDLED data
                 double[] smoothedREDLED = smooth(REDLED);
                 double[] smoothedIRLED = smooth(IRLED);
@@ -784,7 +786,6 @@ public class Brsp {
                 double respiratorRate = freq[6 + respMaxIndex] * FS;
                 double heartRate = freq[27 + heartMaxIndex] * FS;
 
-                double[] respHeartSpo2Rates = new double[2];
                 respHeartSpo2Rates[0] = respiratorRate;
                 respHeartSpo2Rates[1] = heartRate;
                 // **************************************************************** freq function
@@ -827,13 +828,15 @@ public class Brsp {
                 double minMaxPeaksREDLED = peaksREDLED[0];
                 double minMaxPeaksIRLED = peaksIRLED[0];
 
-                Log.d("meanPeaksREDLED:", "" + meanPeaksREDLED);
-                Log.d("meanPeaksIRLED:", "" + meanPeaksIRLED);
+                Log.d("meanPeaksREDLED", "" + meanPeaksREDLED);
+                Log.d("meanPeaksIRLED", "" + meanPeaksIRLED);
 
                 // calculate SPO2
                 double spo2 = (meanPeaksREDLED) / (meanPeaksIRLED);
                 spo2 *= .975;
-                Log.d("SPO2 value", "SPO2 value: " + spo2);
+                Log.d("SPO2 value", "" + spo2);
+
+                respHeartSpo2Rates[2] = spo2;
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
                 //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
@@ -843,7 +846,7 @@ public class Brsp {
                 _brspCallback.onDataReceived(respHeartSpo2Rates);
             }
             else{
-                Log.d("redlength", "redledlength: " + REDLED.length);
+                if(REDLED.length % 100 == 0) Log.d("redlength", "redledlength: " + REDLED.length);
             }
 
             return null;
