@@ -1,5 +1,10 @@
 package com.example.robbieginsburg.test;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +27,7 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 
 /**
@@ -37,6 +43,13 @@ public class Brsp {
     private int _oBufferSize;
     private ArrayBlockingQueue<Double> _inputBuffer;
     private ArrayBlockingQueue<Double> _outputBuffer;
+
+    private File file1;
+    private File file2;
+    private File file3;
+    private File file4;
+
+    boolean doThis = true;
 
     SmoothFreq smoothFreq;
 
@@ -690,6 +703,35 @@ public class Brsp {
                 double[] smoothedREDLED = smooth(REDLED);
                 double[] smoothedIRLED = smooth(IRLED);
 
+
+                if(doThis) {
+                    doThis = false;
+
+                    try {
+                        FileOutputStream fileOutputStream1 = new FileOutputStream(file1, true);
+                        for (double a : REDLED) fileOutputStream1.write(String.valueOf(a + "\n").getBytes());
+                        fileOutputStream1.close();
+
+
+                        FileOutputStream fileOutputStream2 = new FileOutputStream(file2, true);
+                        for (double b : smoothedREDLED) fileOutputStream2.write(String.valueOf(b + "\n").getBytes());
+                        fileOutputStream2.close();
+
+
+                        FileOutputStream fileOutputStream3 = new FileOutputStream(file3, true);
+                        for (double c : IRLED) fileOutputStream3.write(String.valueOf(c + "\n").getBytes());
+                        fileOutputStream3.close();
+
+
+                        FileOutputStream fileOutputStream4 = new FileOutputStream(file4, true);
+                        for (double d : smoothedIRLED) fileOutputStream4.write(String.valueOf(d + "\n").getBytes());
+                        fileOutputStream4.close();
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
                 // **************************************************************** freq function
                 // start of fft transform **********
                 double[] inReal = smoothedREDLED;
@@ -749,8 +791,8 @@ public class Brsp {
 
 
                 // performs the smooth function on the REDLED/IRLED data
-                double[] smoothedREDLEDForPeakDetect = smooth(smoothedREDLED);
-                double[] smoothedIRLEDForPeakDetect = smooth(smoothedIRLED);
+                double[] smoothedREDLEDForPeakDetect = smoothedREDLED;
+                double[] smoothedIRLEDForPeakDetect = smoothedIRLED;
 
                 // does some data shifting for REDLED/IRLED after smoothing them for peak detect
                 double[] tmpSmoothedREDLEDForPeakDetect = new double[smoothedREDLEDForPeakDetect.length - 180];
@@ -764,6 +806,11 @@ public class Brsp {
                 // in order to find ther max peaks
                 double[] peaksREDLED = peakDetect(smoothedREDLEDForPeakDetect);
                 double[] peaksIRLED = peakDetect(smoothedIRLEDForPeakDetect);
+
+//                for (double aPeaksREDLED : peaksREDLED) Log.d("peaksREDLED", "" + aPeaksREDLED);
+//                Log.d("peaksREDLED LENGTH", "" + peaksREDLED.length);
+//                for (double aPeaksIRLED : peaksIRLED) Log.d("peaksIRLED", "" + aPeaksIRLED);
+//                Log.d("peaksIRLED LENGTH", "" + peaksIRLED.length);
 
                 // find mean of max peak arrays
                 double meanPeaksREDLED = 0.0;
@@ -780,8 +827,12 @@ public class Brsp {
                 double minMaxPeaksREDLED = peaksREDLED[0];
                 double minMaxPeaksIRLED = peaksIRLED[0];
 
+                Log.d("meanPeaksREDLED:", "" + meanPeaksREDLED);
+                Log.d("meanPeaksIRLED:", "" + meanPeaksIRLED);
+
                 // calculate SPO2
-                double spo2 = (meanPeaksREDLED / minMaxPeaksREDLED) / (meanPeaksIRLED / minMaxPeaksIRLED);
+                double spo2 = (meanPeaksREDLED) / (meanPeaksIRLED);
+                spo2 *= .975;
                 Log.d("SPO2 value", "SPO2 value: " + spo2);
 
                 //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
@@ -802,11 +853,11 @@ public class Brsp {
         protected void onPostExecute(String result) {
 
             // do stuff
-//            try {
-//                Thread.sleep(2000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
+            try {
+                Thread.sleep(FS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
             // make the async task repeat itself
             smoothFreq = new SmoothFreq();
@@ -881,7 +932,7 @@ public class Brsp {
 
             int peaks = 0;
 
-            final int LOOKAHEAD = 20;
+            final int LOOKAHEAD = 50;
             boolean lookForLocalMax = true;
             boolean lookForLocalMin = true;
             double[] allPeaks = new double[0];
@@ -902,7 +953,7 @@ public class Brsp {
             /*for (double e : ledNoZeros) {
                 Log.d("ledNoZeros", ": " + e);
             }*/
-            Log.d("ledNoZeros LENGTH", "LENGTH: " + ledNoZeros.length);
+            //Log.d("ledNoZeros LENGTH", "LENGTH: " + ledNoZeros.length);
 
             for(int i = 0; i + LOOKAHEAD < ledNoZeros.length; i++) {
 
@@ -917,7 +968,7 @@ public class Brsp {
 
                 // if the current element is the local max
                 if((ledNoZeros[i] > next300ValuesMax) && (lookForLocalMax)) {
-                    Log.d("local max", "" + ledNoZeros[i]);
+                    //Log.d("local max", "" + ledNoZeros[i]);
                     //Log.d("max peak", "max peak: " + ledNoZeros[i] + " is greater than: " + next300ValuesMax);
 
                     // add it to the maxima array
@@ -933,7 +984,7 @@ public class Brsp {
 
                 // if the current element is the local min
                 if(((ledNoZeros[i] < next300ValuesMin) && (lookForLocalMin)) || ((ledNoZeros[i] == next300ValuesMin) && (lookForLocalMin))){
-                    Log.d("local min", "" + ledNoZeros[i]);
+                    //Log.d("local min", "" + ledNoZeros[i]);
                     //Log.d("min peak", "min peak: " + ledNoZeros[i] + " is less than: " + next300ValuesMin);
 
                     // add it to the minima array
@@ -948,7 +999,7 @@ public class Brsp {
                 }
             }
 
-            Log.d("NUM PEAKS", "" + peaks);
+            //Log.d("NUM PEAKS", "" + peaks);
             return allPeaks;
         } // end peak detect function
     } // end async task
@@ -1225,6 +1276,88 @@ public class Brsp {
      */
     public boolean connect(Context context, BluetoothDevice device) {
         //debugLog("connect()");
+
+        // specifies tha path to where the file will be created/stored
+        // in this case, the file will be created/stored in the root directory
+        File filePath = Environment.getExternalStorageDirectory();
+
+        // name the file assignment.txt
+        file1 = new File(filePath, "REDLED_before_smooth.txt");
+        file2 = new File(filePath, "REDLED_after_smooth.txt");
+        file3 = new File(filePath, "IRLED_before_smooth.txt");
+        file4 = new File(filePath, "IRLED_after_smooth.txt");
+
+        // checks to see if the file already exists in the user's system, at the specified location
+        if (file1.exists()) {
+            // if it does, clear all the data already in it
+            try {
+                PrintWriter writer = new PrintWriter(file1);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // if it doesn't, create the file
+            try {
+                file1.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // checks to see if the file already exists in the user's system, at the specified location
+        if (file2.exists()) {
+            // if it does, clear all the data already in it
+            try {
+                PrintWriter writer = new PrintWriter(file2);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // if it doesn't, create the file
+            try {
+                file2.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // checks to see if the file already exists in the user's system, at the specified location
+        if (file3.exists()) {
+            // if it does, clear all the data already in it
+            try {
+                PrintWriter writer = new PrintWriter(file3);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // if it doesn't, create the file
+            try {
+                file3.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        // checks to see if the file already exists in the user's system, at the specified location
+        if (file4.exists()) {
+            // if it does, clear all the data already in it
+            try {
+                PrintWriter writer = new PrintWriter(file4);
+                writer.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        } else {
+            // if it doesn't, create the file
+            try {
+                file4.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
