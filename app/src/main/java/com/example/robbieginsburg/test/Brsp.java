@@ -877,27 +877,27 @@ public class Brsp {
         // end of smooth function
 
         // start peak detect function
-        public double[] peakDetect(double[] LED) {
+        public double[] peakDetect(double[] ledNoZeros) {
 
             int peaks = 0;
 
-            final int LOOKAHEAD = 300;
+            final int LOOKAHEAD = 20;
             boolean lookForLocalMax = true;
             boolean lookForLocalMin = true;
             double[] allPeaks = new double[0];
 
-            // creates a new list comprised of all values of the LED array that are != 0.0
-            // converts this list back into an array list
-            List<Double> list = new ArrayList<Double>();
-            for (double ledElement : LED) {
-                if (ledElement != 0.0)  list.add(ledElement);
-            }
-            Double[] ledFixed = list.toArray(new Double[0]);
-
-            double[] ledNoZeros = new double[ledFixed.length];
-            for(int i = 0; i < ledNoZeros.length; i++){
-                ledNoZeros[i] = ledFixed[i];
-            }
+//            // creates a new list comprised of all values of the LED array that are != 0.0
+//            // converts this list back into an array list
+//            List<Double> list = new ArrayList<Double>();
+//            for (double ledElement : LED) {
+//                if (ledElement != 0.0)  list.add(ledElement);
+//            }
+//            Double[] ledFixed = list.toArray(new Double[0]);
+//
+//            double[] ledNoZeros = new double[ledFixed.length];
+//            for(int i = 0; i < ledNoZeros.length; i++){
+//                ledNoZeros[i] = ledFixed[i];
+//            }
 
             /*for (double e : ledNoZeros) {
                 Log.d("ledNoZeros", ": " + e);
@@ -932,7 +932,7 @@ public class Brsp {
                 }
 
                 // if the current element is the local min
-                if((ledNoZeros[i] < next300ValuesMin) && (lookForLocalMin)) {
+                if(((ledNoZeros[i] < next300ValuesMin) && (lookForLocalMin)) || ((ledNoZeros[i] == next300ValuesMin) && (lookForLocalMin))){
                     Log.d("local min", "" + ledNoZeros[i]);
                     //Log.d("min peak", "min peak: " + ledNoZeros[i] + " is less than: " + next300ValuesMin);
 
