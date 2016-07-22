@@ -3,8 +3,10 @@ package com.example.robbieginsburg.test;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
@@ -766,10 +768,9 @@ public class Brsp {
                 // find mean of max peak arrays
                 double meanPeaksREDLED = 0.0;
                 double meanPeaksIRLED = 0.0;
-                for(int i = 0; i < peaksREDLED.length - 1; i++) {
-                    meanPeaksREDLED += Math.abs(peaksREDLED[i] - peaksREDLED[i+1]);
-                    meanPeaksIRLED += Math.abs(peaksIRLED[i] - peaksIRLED[i+1]);
-                }
+                for(int i = 0; i < peaksREDLED.length - 1; i++) meanPeaksREDLED += Math.abs(peaksREDLED[i] - peaksREDLED[i+1]);
+                for(int i = 0; i < peaksIRLED.length - 1; i++) meanPeaksIRLED += Math.abs(peaksIRLED[i] - peaksIRLED[i+1]);
+
                 meanPeaksREDLED /= peaksREDLED.length;
                 meanPeaksIRLED /= peaksIRLED.length;
 
@@ -878,73 +879,78 @@ public class Brsp {
         // start peak detect function
         public double[] peakDetect(double[] LED) {
 
-            double[] maxima = new double[0];
-            double[] minima = new double[0];
+            int peaks = 0;
 
             final int LOOKAHEAD = 300;
+            boolean lookForLocalMax = true;
+            boolean lookForLocalMin = true;
+            double[] allPeaks = new double[0];
 
-            double maximum = 0.0;
-            double minimum = 0.0;
+            // creates a new list comprised of all values of the LED array that are != 0.0
+            // converts this list back into an array list
+            List<Double> list = new ArrayList<Double>();
+            for (double ledElement : LED) {
+                if (ledElement != 0.0)  list.add(ledElement);
+            }
+            Double[] ledFixed = list.toArray(new Double[0]);
 
-            boolean min = true;
-            boolean max = false;
+            double[] ledNoZeros = new double[ledFixed.length];
+            for(int i = 0; i < ledNoZeros.length; i++){
+                ledNoZeros[i] = ledFixed[i];
+            }
 
-            for(int i = 0; i + LOOKAHEAD < LED.length; i++) {
+            /*for (double e : ledNoZeros) {
+                Log.d("ledNoZeros", ": " + e);
+            }*/
+            Log.d("ledNoZeros LENGTH", "LENGTH: " + ledNoZeros.length);
+
+            for(int i = 0; i + LOOKAHEAD < ledNoZeros.length; i++) {
 
                 // puts the next 300 values into an array, and sorts it to find the max and min value
                 double[] next300Values = new double[LOOKAHEAD];
-                System.arraycopy(LED, i, next300Values, 0, LOOKAHEAD);
+                System.arraycopy(ledNoZeros, i+1, next300Values, 0, LOOKAHEAD);
                 Arrays.sort(next300Values);
                 double next300ValuesMax = next300Values[next300Values.length-1];
                 double next300ValuesMin = next300Values[0];
 
-                if(LED[i] > maximum) {
-                    maximum = LED[i];
+                //Log.d("max/min next 300", "max/min next 300: " + next300ValuesMax + " and " + next300ValuesMin);
+
+                // if the current element is the local max
+                if((ledNoZeros[i] > next300ValuesMax) && (lookForLocalMax)) {
+                    Log.d("local max", "" + ledNoZeros[i]);
+                    //Log.d("max peak", "max peak: " + ledNoZeros[i] + " is greater than: " + next300ValuesMax);
+
+                    // add it to the maxima array
+                    double[] tmpAllPeaks = new double[allPeaks.length + 1];
+                    System.arraycopy(allPeaks, 0, tmpAllPeaks, 0, allPeaks.length);
+                    tmpAllPeaks[tmpAllPeaks.length - 1] = ledNoZeros[i];
+                    allPeaks = tmpAllPeaks;
+
+                    lookForLocalMax = false;
+                    lookForLocalMin = true;
+                    peaks++;
                 }
 
-                if(LED[i] < minimum) {
-                    minimum = LED[i];
-                }
+                // if the current element is the local min
+                if((ledNoZeros[i] < next300ValuesMin) && (lookForLocalMin)) {
+                    Log.d("local min", "" + ledNoZeros[i]);
+                    //Log.d("min peak", "min peak: " + ledNoZeros[i] + " is less than: " + next300ValuesMin);
 
-                if(LED[i] < maximum && !max) {
+                    // add it to the minima array
+                    double[] tmpAllPeaks = new double[allPeaks.length + 1];
+                    System.arraycopy(allPeaks, 0, tmpAllPeaks, 0, allPeaks.length);
+                    tmpAllPeaks[tmpAllPeaks.length - 1] = ledNoZeros[i];
+                    allPeaks = tmpAllPeaks;
 
-                    if(next300ValuesMax < maximum) {
-
-                        // adds the maximum to the maxima array
-                        double[] tmpMaxima = new double[maxima.length + 1];
-                        System.arraycopy(maxima, 0, tmpMaxima, 0, maxima.length);
-                        tmpMaxima[tmpMaxima.length - 1] = maximum;
-                        maxima = tmpMaxima;
-
-                        min = true;
-                        max = true;
-                    }
-                }
-
-                if(LED[i] > minimum  && min) {
-
-                    if(next300ValuesMin > minimum) {
-
-                        // adds the minimum to the minima array
-                        double[] tmpMinima = new double[minima.length + 1];
-                        System.arraycopy(minima, 0, tmpMinima, 0, minima.length);
-                        tmpMinima[tmpMinima.length - 1] = minimum;
-                        minima = tmpMinima;
-
-                        min = false;
-                        max = false;
-                    }
+                    lookForLocalMin = false;
+                    lookForLocalMax = true;
+                    peaks++;
                 }
             }
 
-            // combines the minima and maxima into one array
-            double[] allPeaks = new double[maxima.length + minima.length];
-            System.arraycopy(maxima, 0, allPeaks, 0, maxima.length);
-            System.arraycopy(minima, 0, allPeaks, maxima.length, minima.length);
-
+            Log.d("NUM PEAKS", "" + peaks);
             return allPeaks;
-        }
-        // end max peak detect function
+        } // end peak detect function
     } // end async task
 
 
