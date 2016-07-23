@@ -49,7 +49,10 @@ public class Brsp {
     private File file3;
     private File file4;
 
+    // used for writing the output of RED/IRLED before/after smooth to files
     boolean doThis = true;
+
+    private final double K = .975;
 
     SmoothFreq smoothFreq;
 
@@ -833,7 +836,8 @@ public class Brsp {
 
                 // calculate SPO2
                 double spo2 = (meanPeaksREDLED) / (meanPeaksIRLED);
-                spo2 *= .975;
+                // multiply by a constant K
+                spo2 *= K;
                 Log.d("SPO2 value", "" + spo2);
 
                 respHeartSpo2Rates[2] = spo2;
