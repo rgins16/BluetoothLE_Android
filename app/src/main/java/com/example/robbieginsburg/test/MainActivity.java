@@ -1,5 +1,6 @@
 package com.example.robbieginsburg.test;
 
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.Process;
 import android.app.Activity;
@@ -25,6 +26,8 @@ import android.widget.Toast;
 
 import android.graphics.Color;
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.LimitLine;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.data.Entry;
@@ -37,14 +40,22 @@ import java.util.ArrayList;
 public class MainActivity extends Activity {
     private final String TAG = "BRSPTERM." + this.getClass().getSimpleName();
 
-    private int numRespHeart = 0;
+    private int numData = 0;
 
     private Brsp _brsp;
     private BluetoothDevice _selectedDevice;
 
-    LineChart lineChart;
-    ArrayList<String> xVals = new ArrayList<String>();
-    LineData data;
+    LineChart heartRateChart;
+    LineChart respirationRateChart;
+    LineChart spo2Chart;
+
+    ArrayList<String> xValsHeart = new ArrayList<String>();
+    ArrayList<String> xValsResp = new ArrayList<String>();
+    ArrayList<String> xValsSPO2 = new ArrayList<String>();
+
+    LineData heartData;
+    LineData respData;
+    LineData spo2Data;
 
     private BrspCallback _brspCallback = new BrspCallback() {
 
@@ -81,15 +92,26 @@ public class MainActivity extends Activity {
                     //Log.d("RespHeartRates1", "Respiration Rate: " + respHeartRates[0]);
                     //Log.d("RespHeartRates2", "Heart Rate: " + respHeartRates[1]);
 
-                    xVals.add(String.valueOf(numRespHeart + 1));
-                    data.addEntry(new Entry((float) respHeartSpo2Rates[0], numRespHeart), 0);
-                    data.addEntry(new Entry((float) respHeartSpo2Rates[1], numRespHeart), 1);
-                    data.addEntry(new Entry((float) respHeartSpo2Rates[2], numRespHeart), 2);
+                    xValsHeart.add(String.valueOf(numData + 1));
+                    xValsResp.add(String.valueOf(numData + 1));
+                    xValsSPO2.add(String.valueOf(numData + 1));
 
-                    lineChart.notifyDataSetChanged(); // let the chart know it's data changed
-                    lineChart.invalidate(); // refresh
 
-                    numRespHeart++;
+                    heartData.addEntry(new Entry((float) respHeartSpo2Rates[0], numData), 0);
+                    respData.addEntry(new Entry((float) respHeartSpo2Rates[1], numData), 0);
+                    spo2Data.addEntry(new Entry((float) respHeartSpo2Rates[2], numData), 0);
+
+                    // let the chart know it's data changed
+                    heartRateChart.notifyDataSetChanged();
+                    respirationRateChart.notifyDataSetChanged();
+                    spo2Chart.notifyDataSetChanged();
+
+                    // refresh the charts
+                    heartRateChart.invalidate();
+                    respirationRateChart.invalidate();
+                    spo2Chart.invalidate();
+
+                    numData++;
                 }
             });
             super.onDataReceived(respHeartSpo2Rates);
@@ -208,66 +230,185 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
-        lineChart = (LineChart) findViewById(R.id.heartRateChart);
-        lineChart.setDescription("");
-        lineChart.setNoDataTextDescription("It takes up to 30 seconds to start collecting data from you.");
-        lineChart.setTouchEnabled(false);
-
-        // define info about x axis
-        XAxis xAxis = lineChart.getXAxis();
-        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
-        xAxis.setTextSize(10f);
-        xAxis.setTextColor(Color.BLACK);
-        xAxis.setDrawAxisLine(true);
-        xAxis.setDrawGridLines(false);
-
-        // define info about y axis
-        YAxis yAxis = lineChart.getAxisLeft();
-        lineChart.getAxisRight().setEnabled(false);
-        yAxis.setAxisMinValue(0);
-        yAxis.setTextSize(10f);
-        yAxis.setTextColor(Color.BLACK);
-        yAxis.setDrawAxisLine(true);
-        yAxis.setDrawGridLines(false);
-
-        // initialize the lines for Respiration/Heart Rate and SPO2
+        // Heart Rate Line Graph
+        heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
+        heartRateChart.setDescription("Heart Rate");
+        heartRateChart.setDescriptionPosition(625, 25);
+        heartRateChart.setDescriptionTextSize(20f);
+        heartRateChart.setDescriptionTypeface(Typeface.DEFAULT_BOLD);
+        heartRateChart.setDescriptionColor(Color.RED);
+        heartRateChart.setNoDataTextDescription("Inital Data Collection...\nThis may take up to 3 minutes");
+        heartRateChart.setTouchEnabled(false);
+        // x-axis
+        XAxis xAxisHeart = heartRateChart.getXAxis();
+        xAxisHeart.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxisHeart.setTextSize(10f);
+        xAxisHeart.setTextColor(Color.BLACK);
+        xAxisHeart.setDrawAxisLine(true);
+        xAxisHeart.setDrawGridLines(true);
+        xAxisHeart.setAxisLineWidth(2f);
+        // y-axis
+        YAxis yAxisHeart = heartRateChart.getAxisLeft();
+        heartRateChart.getAxisRight().setEnabled(false);
+        yAxisHeart.setTextSize(10f);
+        yAxisHeart.setTextColor(Color.BLACK);
+        yAxisHeart.setDrawAxisLine(true);
+        yAxisHeart.setDrawGridLines(true);
+        yAxisHeart.setAxisLineWidth(2f);
+        yAxisHeart.setAxisMinValue(0f);
+        yAxisHeart.setAxisMaxValue(180f);
+        // healthy resting min heart rate line
+        LimitLine healthyMinHeart = new LimitLine(40f, "Healthy Resting Minimum Heart Rate");
+        healthyMinHeart.setLineColor(Color.RED);
+        healthyMinHeart.setLineWidth(2f);
+        healthyMinHeart.setTextColor(Color.BLACK);
+        healthyMinHeart.setTextSize(12f);
+        healthyMinHeart.setLabelPosition(LimitLine.LimitLabelPosition.RIGHT_BOTTOM);
+        yAxisHeart.addLimitLine(healthyMinHeart);
+        // healthy resting max heart rate line
+        LimitLine healthyMaxHeart = new LimitLine(100f, "Healthy Resting Maximum Heart Rate");
+        healthyMaxHeart.setLineColor(Color.RED);
+        healthyMaxHeart.setLineWidth(2f);
+        healthyMaxHeart.setTextColor(Color.BLACK);
+        healthyMaxHeart.setTextSize(12f);
+        healthyMaxHeart.setLabelPosition(LimitLine.LimitLabelPosition.RIGHT_TOP);
+        yAxisHeart.addLimitLine(healthyMaxHeart);
+        // disable legend that appears at the bottom of the screen
+        Legend heartLegend = heartRateChart.getLegend();
+        heartLegend.setEnabled(false);
+        // initialize the list holding the data for Heart Rate
         ArrayList<Entry> valsComp1 = new ArrayList<Entry>();
-        ArrayList<Entry> valsComp2 = new ArrayList<Entry>();
-        ArrayList<Entry> valsComp3 = new ArrayList<Entry>();
-
-        LineDataSet setComp1 = new LineDataSet(valsComp1, "Respiration Rate");
+        // initialize the data into a data holder for the line graph
+        LineDataSet setComp1 = new LineDataSet(valsComp1, "");
         setComp1.setAxisDependency(YAxis.AxisDependency.LEFT);
-        setComp1.setColor(Color.BLUE);
+        setComp1.setColor(Color.RED);
         setComp1.setDrawCircles(false);
-        //setComp1.setCircleColor(Color.BLUE);
-        //setComp1.setCircleColorHole(Color.BLUE);
         setComp1.setDrawValues(false);
+        // use the interface ILineDataSet
+        ArrayList<ILineDataSet> dataSets1 = new ArrayList<ILineDataSet>();
+        dataSets1.add(setComp1);
+        // bind the data to the graph
+        heartData = new LineData(xValsHeart, dataSets1);
+        heartRateChart.setData(heartData);
+        heartRateChart.invalidate(); // refresh the graph
 
-        LineDataSet setComp2 = new LineDataSet(valsComp2, "Heart Rate");
+
+        // Respiration Rate Line Graph
+        respirationRateChart = (LineChart) findViewById(R.id.respirationRateChart);
+        respirationRateChart.setDescription("Respiratory Rate");
+        respirationRateChart.setDescriptionPosition(675, 25);
+        respirationRateChart.setDescriptionTextSize(20f);
+        respirationRateChart.setDescriptionColor(Color.BLUE);
+        respirationRateChart.setDescriptionTypeface(Typeface.DEFAULT_BOLD);
+        respirationRateChart.setTouchEnabled(false);
+        // x-axis
+        XAxis xAxisResp = respirationRateChart.getXAxis();
+        xAxisResp.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxisResp.setTextSize(10f);
+        xAxisResp.setTextColor(Color.BLACK);
+        xAxisResp.setDrawAxisLine(true);
+        xAxisResp.setDrawGridLines(true);
+        xAxisResp.setAxisLineWidth(2f);
+        // y-axis
+        YAxis yAxisResp = respirationRateChart.getAxisLeft();
+        respirationRateChart.getAxisRight().setEnabled(false);
+        yAxisResp.setTextSize(10f);
+        yAxisResp.setTextColor(Color.BLACK);
+        yAxisResp.setDrawAxisLine(true);
+        yAxisResp.setDrawGridLines(true);
+        yAxisResp.setAxisLineWidth(2f);
+        yAxisResp.setAxisMinValue(0f);
+        yAxisResp.setAxisMaxValue(40f);
+        // healthy resting min respiratory rate line
+        LimitLine healthyMinResp = new LimitLine(12f, "Healthy Resting Minimum Respiratory Rate");
+        healthyMinResp.setLineColor(Color.BLUE);
+        healthyMinResp.setLineWidth(2f);
+        healthyMinResp.setTextColor(Color.BLACK);
+        healthyMinResp.setTextSize(12f);
+        healthyMinResp.setLabelPosition(LimitLine.LimitLabelPosition.RIGHT_BOTTOM);
+        yAxisResp.addLimitLine(healthyMinResp);
+        // healthy resting max respiratory rate line
+        LimitLine healthyMaxResp = new LimitLine(25f, "Healthy Resting Maximum Respiratory Rate");
+        healthyMaxResp.setLineColor(Color.BLUE);
+        healthyMaxResp.setLineWidth(2f);
+        healthyMaxResp.setTextColor(Color.BLACK);
+        healthyMaxResp.setTextSize(12f);
+        healthyMaxResp.setLabelPosition(LimitLine.LimitLabelPosition.RIGHT_TOP);
+        yAxisResp.addLimitLine(healthyMaxResp);
+        // disable legend that appears at the bottom of the screen
+        Legend respLegend = respirationRateChart.getLegend();
+        respLegend.setEnabled(false);
+        // initialize the list holding the data for Heart Rate
+        ArrayList<Entry> valsComp2 = new ArrayList<Entry>();
+        // initialize the data into a data holder for the line graph
+        LineDataSet setComp2 = new LineDataSet(valsComp2, "Respiration Rate");
         setComp2.setAxisDependency(YAxis.AxisDependency.LEFT);
-        setComp2.setColor(Color.RED);
+        setComp2.setColor(Color.BLUE);
         setComp2.setDrawCircles(false);
-        //setComp2.setCircleColor(Color.RED);
-        //setComp2.setCircleColorHole(Color.RED);
         setComp2.setDrawValues(false);
+        // use the interface ILineDataSet
+        ArrayList<ILineDataSet> dataSets2 = new ArrayList<ILineDataSet>();
+        dataSets2.add(setComp2);
+        // bind the data to the graph
+        respData = new LineData(xValsResp, dataSets2);
+        respirationRateChart.setData(respData);
+        respirationRateChart.invalidate(); // refresh the graph
 
+
+        // SPO2 Line Graph
+        spo2Chart = (LineChart) findViewById(R.id.spo2Chart);
+        spo2Chart.setDescription("SPO2");
+        spo2Chart.setDescriptionPosition(600, 25);
+        spo2Chart.setDescriptionTextSize(20f);
+        spo2Chart.setDescriptionColor(Color.GREEN);
+        spo2Chart.setDescriptionTypeface(Typeface.DEFAULT_BOLD);
+        spo2Chart.setTouchEnabled(false);
+        // x-axis
+        XAxis xAxisSPO = spo2Chart.getXAxis();
+        xAxisSPO.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxisSPO.setTextSize(10f);
+        xAxisSPO.setTextColor(Color.BLACK);
+        xAxisSPO.setDrawAxisLine(true);
+        xAxisSPO.setDrawGridLines(true);
+        xAxisSPO.setAxisLineWidth(2f);
+        // y-axis
+        YAxis yAxisSPO2 = spo2Chart.getAxisLeft();
+        spo2Chart.getAxisRight().setEnabled(false);
+        yAxisSPO2.setTextSize(10f);
+        yAxisSPO2.setTextColor(Color.BLACK);
+        yAxisSPO2.setDrawAxisLine(true);
+        yAxisSPO2.setDrawGridLines(true);
+        yAxisSPO2.setAxisLineWidth(2f);
+        yAxisSPO2.setAxisMinValue(0f);
+        yAxisSPO2.setAxisMaxValue(1f);
+        // healthy resting min respiratory rate line
+        LimitLine healthyMinSPO2 = new LimitLine(.90f, "Healthy Resting Minimum SPO2 Rate");
+        healthyMinSPO2.setLineColor(Color.GREEN);
+        healthyMinSPO2.setLineWidth(2f);
+        healthyMinSPO2.setTextColor(Color.BLACK);
+        healthyMinSPO2.setTextSize(12f);
+        healthyMinSPO2.setLabelPosition(LimitLine.LimitLabelPosition.RIGHT_BOTTOM);
+        yAxisSPO2.addLimitLine(healthyMinSPO2);
+        // disable legend that appears at the bottom of the screen
+        Legend spo2Legend = spo2Chart.getLegend();
+        spo2Legend.setEnabled(false);
+        // initialize the list holding the data for SPO2
+        ArrayList<Entry> valsComp3 = new ArrayList<Entry>();
+        // initialize the data into a data holder for the line graph
         LineDataSet setComp3 = new LineDataSet(valsComp3, "SPO2");
         setComp3.setAxisDependency(YAxis.AxisDependency.LEFT);
         setComp3.setColor(Color.GREEN);
         setComp3.setDrawCircles(false);
-        //setComp3.setCircleColor(Color.GREEN);
-        //setComp3.setCircleColorHole(Color.GREEN);
         setComp3.setDrawValues(false);
-
         // use the interface ILineDataSet
-        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
-        dataSets.add(setComp1);
-        dataSets.add(setComp2);
-        dataSets.add(setComp3);
+        ArrayList<ILineDataSet> dataSets3 = new ArrayList<ILineDataSet>();
+        dataSets3.add(setComp3);
+        // bind the data to the graph
+        spo2Data = new LineData(xValsSPO2, dataSets3);
+        spo2Chart.setData(spo2Data);
+        spo2Chart.invalidate(); // refresh the graph
 
-        data = new LineData(xVals, dataSets);
-        lineChart.setData(data);
-        lineChart.invalidate(); // refresh the graph
+
 
         _brsp = new Brsp(_brspCallback, 10000, 10000);
         doScan();

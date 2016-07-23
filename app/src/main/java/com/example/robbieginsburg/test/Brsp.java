@@ -789,8 +789,8 @@ public class Brsp {
                 double respiratorRate = freq[6 + respMaxIndex] * FS;
                 double heartRate = freq[27 + heartMaxIndex] * FS;
 
-                respHeartSpo2Rates[0] = respiratorRate;
-                respHeartSpo2Rates[1] = heartRate;
+                respHeartSpo2Rates[0] = heartRate;
+                respHeartSpo2Rates[1] = respiratorRate;
                 // **************************************************************** freq function
 
 
