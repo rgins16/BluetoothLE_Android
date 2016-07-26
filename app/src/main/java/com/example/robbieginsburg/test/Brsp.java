@@ -7,11 +7,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
@@ -26,7 +23,6 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 
@@ -59,6 +55,9 @@ public class Brsp {
     private final int MAX_DATA = 1500;
     private final int FS = 50;
 
+    private int numGoodData = 0;
+    private int numBadData = 0;
+
     // initialize freq array
     double[] freq = new double[MAX_DATA / 2];
 
@@ -66,7 +65,7 @@ public class Brsp {
     double[] IRLED = new double[0];
 
     private int dataCount = 0;
-    byte[] byteData;
+    byte[] byteData = new byte[14];
 
     private BrspCallback _brspCallback;
 
@@ -274,7 +273,7 @@ public class Brsp {
                     // the bytesToSend byte array
                     // *** the leftover bytes from the previous iteration of this method will
                     // *** still be stored in this variable because it is global
-                    byteData = new byte[6];
+                // byteData = new byte[6];
 
                     // this will be comprised of all valid byte objects to send
                     // at most it will contain 3 valid byte objects
@@ -293,15 +292,20 @@ public class Brsp {
 
                         // if the byte is a star, reset the count and byte array of current object
                         if((char)byteChar == '*'){
+
+                            if(dataCount != 0) numBadData++;
+
                             dataCount = 0;
-                            byteData = new byte[6];
+                            byteData = new byte[14];
                         }
-                        // if byte is endline character
+                        // if byte is endline character, reset the count and check to see if there
+                        // are valid bytes to send
                         else if(((char)byteChar == '\n')){
                             // and the dataCount is at 6, that means there is a valid 6 bits object,
                             // and it can be saved fort transmission
-                            if(dataCount == 6){
+                            if(dataCount == 14){
                                 //Log.i("Tag2", "------ This is a good packet to send ------");
+                                numGoodData++;
 
                                 // if this is the first valid byte object of the 20 bits packet
                                 if (validCount == 0){
@@ -310,34 +314,37 @@ public class Brsp {
                                     validCount++;
                                 }
                                 // if this is the second or third valid byte object of the 20 byte packet
-                                else if (validCount >= 1){
+                                else if (validCount == 1){
 
                                     // create a tmp array that is the size of the two arrays
-                                    byte[] tmp = new byte[byteData.length + validBytesToSend.length];
+                                    byte[] tmp = new byte[validBytesToSend.length + byteData.length];
 
                                     // copy byteData into start of tmp
-                                    System.arraycopy(byteData, 0, tmp, 0, byteData.length);
+                                    System.arraycopy(validBytesToSend, 0, tmp, 0, validBytesToSend.length);
 
                                     // copy validBytesToSend into end of tmp
-                                    System.arraycopy(validBytesToSend, 0, tmp, byteData.length, validBytesToSend.length);
+                                    System.arraycopy(byteData, 0, tmp, validBytesToSend.length, byteData.length);
 
                                     // puts tmp into the byte array to be transmitted
                                     validBytesToSend = tmp;
 
                                     validCount++;
                                 }
-                                // there can not be more than 3 valid byte objects (max 18 bits)
+                                // there can not be more than 2 valid byte objects (max 16 bits)
                             }
 
                             // reset
                             dataCount = 0;
-                            byteData = new byte[6];
+                            byteData = new byte[14];
                         }
                         // this checks for bad data
-                        else if(dataCount >= 6){
+                        else if(dataCount >= 14){
+
+                            numBadData++;
+
                             // reset
                             dataCount = 0;
-                            byteData = new byte[6];
+                            byteData = new byte[14];
                         }
                         // adds the current byte to a tmp byte array that might be transmitted
                         // if it turns out to be a valid byte object (6 bits and follows the rules above)
@@ -349,8 +356,8 @@ public class Brsp {
                     }
 
                     // addToBuffer(_inputBuffer, validBytesToSend); *****************************
-                    if(validBytesToSend != null && (validBytesToSend.length == 6 ||
-                            validBytesToSend.length == 12 || validBytesToSend.length == 18)){
+                    if(validBytesToSend != null && (validBytesToSend.length == 14 ||
+                            validBytesToSend.length == 28)){
                         addToLedArrays(validBytesToSend);
                     }
 
@@ -365,141 +372,93 @@ public class Brsp {
 
         public void addToLedArrays(byte[] validBytes){
             //debugLog("addToLedArrays()");
-            byte[] bytes = validBytes;
 
-            if (bytes != null) {
+            double[] addToRED = null;
+            double[] addToIR = null;
+            double[] tmpRED = null;
+            double[] tmpIR = null;
 
-                String input = new String(bytes);
+            if(validBytes.length == 14){
 
-                double[] addToRED = null;
-                double[] addToIR = null;
-                double[] tmpRED = null;
-                double[] tmpIR = null;
+                // get DC values
+                double val1 = (char) validBytes[3] | ((char) validBytes[4] << 8);
+                double val2 = (char) validBytes[6] | ((char) validBytes[7] << 8);
 
-                if(input.length() == 6){
-                    input = input.substring(0, 6) + "\n";
+                // convert DC values to AC
+                val1 *= (1.2/(2^15));
+                val2 *= (1.2/(2^15));
 
-                    // get DC values
-                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
+                addToRED = new double[1];
+                addToRED[0] = val1;
 
-                    // convert DC values to AC
-                    val1 *= (1.2/(2^15));
-                    val2 *= (1.2/(2^15));
+                addToIR = new double[1];
+                addToIR[0] = val2;
 
-                    addToRED = new double[1];
-                    addToRED[0] = val1;
+                // create a tmp array that is the size of the two arrays
+                tmpRED = new double[REDLED.length + addToRED.length];
+                tmpIR = new double[IRLED.length + addToIR.length];
+            }
+            else if(validBytes.length == 28) {
 
-                    addToIR = new double[1];
-                    addToIR[0] = val2;
+                // get DC values
+                double val1 = (char) validBytes[3] | ((char) validBytes[4] << 8);
+                double val2 = (char) validBytes[6] | ((char) validBytes[7] << 8);
+                double val3 = (char) validBytes[16] | ((char) validBytes[17] << 8);
+                double val4 = (char) validBytes[19] | ((char) validBytes[20] << 8);
 
-                    // create a tmp array that is the size of the two arrays
-                    tmpRED = new double[REDLED.length + addToRED.length];
-                    tmpIR = new double[IRLED.length + addToIR.length];
-                }
-                else if(input.length() == 12){
-                    input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n";
+                // convert DC values to AC
+                val1 *= (1.2 / (2 ^ 15));
+                val2 *= (1.2 / (2 ^ 15));
+                val3 *= (1.2 / (2 ^ 15));
+                val4 *= (1.2 / (2 ^ 15));
 
-                    // get DC values
-                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
-                    double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
-                    double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
+                addToRED = new double[2];
+                addToRED[0] = val1;
+                addToRED[1] = val3;
 
-                    // convert DC values to AC
-                    val1 *= (1.2/(2^15));
-                    val2 *= (1.2/(2^15));
-                    val3 *= (1.2/(2^15));
-                    val4 *= (1.2/(2^15));
+                addToIR = new double[2];
+                addToIR[0] = val2;
+                addToIR[1] = val4;
 
-                    addToRED = new double[2];
-                    addToRED[0] = val1;
-                    addToRED[1] = val3;
-
-                    addToIR = new double[2];
-                    addToIR[0] = val2;
-                    addToIR[1] = val4;
-
-                    // create a tmp array that is the size of the two arrays
-                    tmpRED = new double[REDLED.length + addToRED.length];
-                    tmpIR = new double[IRLED.length + addToIR.length];
-                }
-                else if(input.length() == 18){
-                    input = input.substring(0, 6) + "\n" + input.substring(6, 12) + "\n" + input.substring(12, 18) + "\n";
-
-                    // get DC values
-                    double val1 = (char) bytes[0] | ((char) bytes[1] << 8);
-                    double val2 = (char) bytes[3] | ((char) bytes[4] << 8);
-                    double val3 = (char) bytes[6] | ((char) bytes[7] << 8);
-                    double val4 = (char) bytes[9] | ((char) bytes[10] << 8);
-                    double val5 = (char) bytes[12] | ((char) bytes[13] << 8);
-                    double val6 = (char) bytes[15] | ((char) bytes[15] << 8);
-
-                    // convert DC values to AC
-                    val1 *= (1.2/(2^15));
-                    val2 *= (1.2/(2^15));
-                    val3 *= (1.2/(2^15));
-                    val4 *= (1.2/(2^15));
-                    val5 *= (1.2/(2^15));
-                    val6 *= (1.2/(2^15));
-
-                    addToRED = new double[3];
-                    addToRED[0] = val1;
-                    addToRED[1] = val3;
-                    addToRED[2] = val5;
-
-                    addToIR = new double[3];
-                    addToIR[0] = val2;
-                    addToIR[1] = val4;
-                    addToIR[2] = val6;
-
-                    // create a tmp array that is the size of the two arrays
-                    tmpRED = new double[REDLED.length + addToRED.length];
-                    tmpIR = new double[IRLED.length + addToIR.length];
-                }
-
-                if(addToRED != null && tmpRED!= null){
-                    //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
-                    // copy REDLED/IRLED into start of tmp
-                    System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
-                    System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
-
-                    // copy addToRED/addToIR into end of tmp
-                    System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
-                    System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
-
-                    // puts the now combined tmp array back into the original array
-                    REDLED = tmpRED;
-                    IRLED = tmpIR;
-                }
-
-                // will check to see if the arrays are >= 1500 after adding the value
-                // if so it will drop the oldest entrys
-                //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
-                if(REDLED.length >= MAX_DATA){
-
-                    int shiftBy = REDLED.length - MAX_DATA;
-
-                    double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
-                    double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
-
-                    System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
-                    System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
-
-                    // puts the shifted tmp array back into the original array
-                    REDLED = tmpForShiftRED;
-                    IRLED = tmpForShiftIR;
-                }
-
-                //Log.d("REDLED Length", "REDLED Length" + REDLED.length);
-                //Log.i("IRLED", IRLED.toString());
-
-                // addLineToTextView(input);
-
-            } else {
-                // This occasionally happens but no data should be lost
+                // create a tmp array that is the size of the two arrays
+                tmpRED = new double[REDLED.length + addToRED.length];
+                tmpIR = new double[IRLED.length + addToIR.length];
             }
 
+            if(addToRED != null && tmpRED!= null){
+                // copy REDLED/IRLED into start of tmp
+                System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
+                System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
+
+                // copy addToRED/addToIR into end of tmp
+                System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
+                System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
+
+                // puts the now combined tmp array back into the original array
+                REDLED = tmpRED;
+                IRLED = tmpIR;
+            }
+
+            // will check to see if the arrays are >= 1500 after adding the value
+            // if so it will drop the oldest entrys
+            //System.arraycopy(Object src, int srcPos, Object dest, int destPos, int length)
+            if(REDLED.length >= MAX_DATA){
+
+                int shiftBy = REDLED.length - MAX_DATA;
+
+                double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
+                double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+
+                System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
+                System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
+
+                // puts the shifted tmp array back into the original array
+                REDLED = tmpForShiftRED;
+                IRLED = tmpForShiftIR;
+            }
+
+            //Log.d("REDLED Length", "REDLED Length" + REDLED.length);
+            _brspCallback.onDataReceived(REDLED.length, numGoodData, numBadData);
         }
 
         @Override
@@ -850,7 +809,7 @@ public class Brsp {
                 _brspCallback.onDataReceived(respHeartSpo2Rates);
             }
             else{
-                if(REDLED.length % 100 == 0) Log.d("redlength", "redledlength: " + REDLED.length);
+                //Log.d("redlength", "redledlength: " + REDLED.length);
             }
 
             return null;

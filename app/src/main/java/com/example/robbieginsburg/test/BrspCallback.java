@@ -33,6 +33,10 @@ public abstract class BrspCallback {
 
     }
 
+    public void onDataReceived(int ledLength, int numGood, int numBad) {
+
+    }
+
     /**
      * Called when an internal exception occurs
      *

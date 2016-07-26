@@ -22,6 +22,7 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import android.graphics.Color;
@@ -48,6 +49,7 @@ public class MainActivity extends Activity {
     LineChart heartRateChart;
     LineChart respirationRateChart;
     LineChart spo2Chart;
+    private TextView ledLength;
 
     ArrayList<String> xValsHeart = new ArrayList<String>();
     ArrayList<String> xValsResp = new ArrayList<String>();
@@ -81,6 +83,20 @@ public class MainActivity extends Activity {
                     }
                 }
             });
+        }
+
+        @Override
+        public void onDataReceived(final int length, final int numGood, final int numBad) {
+            //Log.d("led length" , "led length: " + length);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    ledLength.setText("REDLED length: " + String.valueOf(length) +
+                        "\nNum Good:        " + String.valueOf(numGood) +
+                        "\nNum Bad:           " + String.valueOf(numBad));
+                }
+            });
+            super.onDataReceived(length, numGood, numBad);
         }
 
         @Override
@@ -229,6 +245,8 @@ public class MainActivity extends Activity {
         this.registerReceiver(mReceiver, adapterStateFilter);
 
         setContentView(R.layout.activity_main);
+
+        ledLength = (TextView) findViewById(R.id.padding1);
 
         // Heart Rate Line Graph
         heartRateChart = (LineChart) findViewById(R.id.heartRateChart);
