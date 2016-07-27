@@ -332,15 +332,9 @@ public class Brsp {
                                 }
                                 // there can not be more than 2 valid byte objects (max 16 bits)
                             }
-
-                            // reset
-                            dataCount = 0;
-                            byteData = new byte[14];
-                        }
-                        // this checks for bad data
-                        else if(dataCount >= 14){
-
-                            numBadData++;
+                            else {
+                                numBadData++;
+                            }
 
                             // reset
                             dataCount = 0;
