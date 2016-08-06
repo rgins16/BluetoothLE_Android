@@ -65,7 +65,7 @@ public class Brsp {
     double[] IRLED = new double[0];
 
     private int dataCount = 0;
-    byte[] byteData = new byte[14];
+    byte[] byteData = new byte[0];
 
     private BrspCallback _brspCallback;
 
@@ -268,91 +268,61 @@ public class Brsp {
                     // Incoming data
                     byte[] rawBytes = characteristic.getValue();
 
-                    // this will be comprised of a valid 6 bits data object to send
-                    // when it is a good packet to send (see below), it will be added to
-                    // the bytesToSend byte array
-                    // *** the leftover bytes from the previous iteration of this method will
-                    // *** still be stored in this variable because it is global
-                // byteData = new byte[6];
-
-                    // this will be comprised of all valid byte objects to send
-                    // at most it will contain 3 valid byte objects
-                    // each valid byte object is 6 bits, and only 20 can be sent at once
-                    // 3 valid byte objects would equal 18 bits
-                    // the '*'s and '\n's will be stripped off before being sent enabling it to be
-                    // 18 bytes
-                    byte[] validBytesToSend = null;
-
-                    // represents the number of valid byte objects being sent in this iteration
-                    // of the method
-                    int validCount = 0;
-
                     // for each byte in the 20 bits that were sent in the packet
-                    for(byte byteChar : rawBytes){
+                    for(byte byteChar : rawBytes) {
 
-                        // if the byte is a star, reset the count and byte array of current object
-                        if((char)byteChar == '*'){
+                        // put the current byte in a tmp byte array to be added to the
+                        // global byte array 'byteData' of all bytes received
+                        byte[] tmpByteChar = new byte[1];
+                        tmpByteChar[0] = byteChar;
 
-                            if(dataCount != 0) numBadData++;
+                        // the tmp byte array being used to add the current byte to the global
+                        // byte array 'byteData' of all bytes received
+                        byte[] tmpByteData = new byte[byteData.length + 1];
 
+                        // copy byteData (all bytes ever collected) into start of tmpByteData
+                        System.arraycopy(byteData, 0, tmpByteData, 0, byteData.length);
+
+                        // copy tmpByteChar (length 2, contains current byte) into start of
+                        // tmpByteData
+                        System.arraycopy(tmpByteChar, 0, tmpByteData, tmpByteData.length - 1, tmpByteChar.length);
+
+                        // puts the now combined tmp array back into the original array
+                        byteData = tmpByteData;
+
+                        // adds the current byte to the global byteData array which contains all
+                        // the bytes ever collected
+                        dataCount++;
+
+                        if ((char) byteChar == '*') {
+                            Log.d("1", "star --- " + dataCount + ": " + (int) ((char) byteChar));
+                        }
+                        if ((char) byteChar == '\n') {
+                            Log.d("2", "new line --- " + dataCount + ": " + (int) ((char) byteChar));
+                        }
+
+                        // if it has been at least 22 bytes since the last packet was sent
+                        // if 22 bytes ago that byte char was '*'
+                        // if 22 bytes ago that byte char was '\n'
+                        if(dataCount > 22 && (char) byteData[byteData.length - 22] == '*'  && (char) byteData[byteData.length-1] == '\n'){
+                            // bad data
+                            // this will trigger if any bytes were dropped during BLE transmission
+                            // if no bytes were dropped, and all data is valid, then dataCount
+                            // should be 22 at this point
+                            if (dataCount > 22) numBadData++;
+                                // otherwise the dataCount is 22 and it is good data
+                            else numGoodData++;
+
+                            // reset count since last 22 valid bytes
                             dataCount = 0;
-                            byteData = new byte[14];
+
+                            // store the valid 22 bytes in validBytesToSend
+                            byte[] validBytesToSend = new byte[22];
+                            System.arraycopy(byteData, byteData.length - 22, validBytesToSend, 0, 22);
+
+                            // pass the valid bytes for conversion to REDLED/IRLED
+                            addToLedArrays(validBytesToSend);
                         }
-                        // if byte is endline character, reset the count and check to see if there
-                        // are valid bytes to send
-                        else if(((char)byteChar == '\n')){
-                            // and the dataCount is at 6, that means there is a valid 6 bits object,
-                            // and it can be saved fort transmission
-                            if(dataCount == 14){
-                                //Log.i("Tag2", "------ This is a good packet to send ------");
-                                numGoodData++;
-
-                                // if this is the first valid byte object of the 20 bits packet
-                                if (validCount == 0){
-                                    // store it in the byte array to be transmitted
-                                    validBytesToSend = byteData;
-                                    validCount++;
-                                }
-                                // if this is the second or third valid byte object of the 20 byte packet
-                                else if (validCount == 1){
-
-                                    // create a tmp array that is the size of the two arrays
-                                    byte[] tmp = new byte[validBytesToSend.length + byteData.length];
-
-                                    // copy byteData into start of tmp
-                                    System.arraycopy(validBytesToSend, 0, tmp, 0, validBytesToSend.length);
-
-                                    // copy validBytesToSend into end of tmp
-                                    System.arraycopy(byteData, 0, tmp, validBytesToSend.length, byteData.length);
-
-                                    // puts tmp into the byte array to be transmitted
-                                    validBytesToSend = tmp;
-
-                                    validCount++;
-                                }
-                                // there can not be more than 2 valid byte objects (max 16 bits)
-                            }
-                            else {
-                                numBadData++;
-                            }
-
-                            // reset
-                            dataCount = 0;
-                            byteData = new byte[14];
-                        }
-                        // adds the current byte to a tmp byte array that might be transmitted
-                        // if it turns out to be a valid byte object (6 bits and follows the rules above)
-                        else if((char)byteChar != '*' && (char)byteChar != '\n'){
-
-                            byteData[dataCount] = byteChar;
-                            dataCount++;
-                        }
-                    }
-
-                    // addToBuffer(_inputBuffer, validBytesToSend); *****************************
-                    if(validBytesToSend != null && (validBytesToSend.length == 14 ||
-                            validBytesToSend.length == 28)){
-                        addToLedArrays(validBytesToSend);
                     }
 
                     //_brspCallback.onDataReceived(Brsp.this);
@@ -372,11 +342,11 @@ public class Brsp {
             double[] tmpRED = null;
             double[] tmpIR = null;
 
-            if(validBytes.length == 14){
+            if(validBytes.length == 20){
 
                 // get DC values
-                double val1 = (char) validBytes[3] | ((char) validBytes[4] << 8);
-                double val2 = (char) validBytes[6] | ((char) validBytes[7] << 8);
+                double val1 = (char) validBytes[4] | ((char) validBytes[5] << 8);
+                double val2 = (char) validBytes[7] | ((char) validBytes[8] << 8);
 
                 // convert DC values to AC
                 val1 *= (1.2/(2^15));

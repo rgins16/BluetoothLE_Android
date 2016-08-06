@@ -63,12 +63,12 @@ public class MainActivity extends Activity {
 
         @Override
         public void onSendingStateChanged(Brsp obj) {
-            Log.d(TAG, "onSendingStateChanged thread id:" + Process.myTid());
+            //Log.d(TAG, "onSendingStateChanged thread id:" + Process.myTid());
         }
 
         @Override
         public void onConnectionStateChanged(Brsp obj) {
-            Log.d(TAG, "onConnectionStateChanged state:" + obj.getConnectionState() + " thread id:" + Process.myTid());
+            //Log.d(TAG, "onConnectionStateChanged state:" + obj.getConnectionState() + " thread id:" + Process.myTid());
             final Brsp brspObj = obj;
             runOnUiThread(new Runnable() {
                 @Override
@@ -135,10 +135,10 @@ public class MainActivity extends Activity {
 
         @Override
         public void onError(Brsp obj, Exception e) {
-            Log.e(TAG, "onError:" + e.getMessage() + " thread id:" + Process.myTid());
+            //Log.e(TAG, "onError:" + e.getMessage() + " thread id:" + Process.myTid());
             super.onError(obj, e);
             if (e instanceof UnstableException) {
-                Log.d(TAG, "Unstable Caught");
+                //Log.d(TAG, "Unstable Caught");
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -163,23 +163,23 @@ public class MainActivity extends Activity {
 
         @Override
         public void onRssiUpdate(Brsp obj) {
-            Log.d(TAG, "onRssiUpdate thread id:" + Process.myTid());
+            //Log.d(TAG, "onRssiUpdate thread id:" + Process.myTid());
             super.onRssiUpdate(obj);
-            Log.d(TAG, "Remote device RSSI:" + obj.getLastRssi()); // Log RSSI
+            //Log.d(TAG, "Remote device RSSI:" + obj.getLastRssi()); // Log RSSI
         }
 
         @Override
         public void onBrspStateChanged(Brsp obj) {
             super.onBrspStateChanged(obj);
             int currentState = obj.getBrspState();
-            Log.d(TAG, "onBrspStateChanged thread id:" + Process.myTid() + " State:" + currentState);
+            //Log.d(TAG, "onBrspStateChanged thread id:" + Process.myTid() + " State:" + currentState);
             obj.readRssi(); // read the RSSI once
             if (obj.getBrspState() == Brsp.BRSP_STATE_READY) {
-                Log.d(TAG, "BRSP READY");
+                //Log.d(TAG, "BRSP READY");
                 // Ready to write
                 // _brsp.writeBytes("Test".getBytes());
             } else {
-                Log.d(TAG, "BRSP NOT READY");
+                //Log.d(TAG, "BRSP NOT READY");
             }
         }
 
@@ -238,7 +238,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
-        Log.d(TAG, "onCreate");
+        //Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
 
         IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
@@ -434,7 +434,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        Log.d(TAG, "onDestroy");
+        //Log.d(TAG, "onDestroy");
         doDisconnect();
         this.unregisterReceiver(mReceiver);
         super.onDestroy();
@@ -452,14 +452,14 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        Log.d(TAG, "onCreateOptionsMenu");
+        //Log.d(TAG, "onCreateOptionsMenu");
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        Log.d(TAG, "onPrepareOptionsMenu");
+        //Log.d(TAG, "onPrepareOptionsMenu");
         if (_selectedDevice != null) {
             MenuItem item;
             MenuItem connectStatusItem;
@@ -510,8 +510,8 @@ public class MainActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (_brsp == null)
             return false;
-        Log.d(TAG, "onOptionsItemSelected");
-        Log.d(TAG, "Title selected = " + item.getTitle());
+        //Log.d(TAG, "onOptionsItemSelected");
+        //Log.d(TAG, "Title selected = " + item.getTitle());
         switch (item.getItemId()) {
             case R.id.menu_action_connect:
             case R.id.menu_action_connect_status:
@@ -553,7 +553,7 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Log.d(TAG, "onKeyDown keyCode:" + keyCode + " event:" + event.toString());
+        //Log.d(TAG, "onKeyDown keyCode:" + keyCode + " event:" + event.toString());
         if (keyCode == KeyEvent.KEYCODE_BACK && isTaskRoot()) {
             doQuit();
             return true;
@@ -564,7 +564,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.d(TAG, "onActivityResult requestCode:" + requestCode + " resultCode:" + resultCode);
+        //Log.d(TAG, "onActivityResult requestCode:" + requestCode + " resultCode:" + resultCode);
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case ScanActivity.REQUEST_SELECT_DEVICE:
@@ -577,7 +577,7 @@ public class MainActivity extends Activity {
                     }
                     break;
                 default:
-                    Log.w(TAG, "Unknown requestCode encountered in onActivityResult.  Ignoring code:" + requestCode);
+                    //Log.w(TAG, "Unknown requestCode encountered in onActivityResult.  Ignoring code:" + requestCode);
                     break;
             }
 
@@ -611,16 +611,16 @@ public class MainActivity extends Activity {
                     bondStateText = "BOND_NONE";
                     break;
             }
-            Log.d(TAG, "Bond State:" + bondStateText);
+            //Log.d(TAG, "Bond State:" + bondStateText);
 
             result = _brsp.connect(this.getApplicationContext(), _selectedDevice);
-            Log.d(TAG, "Connect result:" + result);
+            //Log.d(TAG, "Connect result:" + result);
         }
     }
 
     private void doDisconnect() {
         if (_brsp != null && _brsp.getConnectionState() != BluetoothGatt.STATE_DISCONNECTED) {
-            Log.d(TAG, "Atempting to disconnect");
+            //Log.d(TAG, "Atempting to disconnect");
             _brsp.disconnect();
         }
     }

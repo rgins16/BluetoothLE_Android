@@ -64,31 +64,31 @@ public class ScanActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        Log.d(TAG, "onCreate");
+        //Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onDestroy() {
-        Log.d(TAG, "onDestroy");
+        //Log.d(TAG, "onDestroy");
         super.onDestroy();
     }
 
     @Override
     protected void onRestart() {
-        Log.d(TAG, "onRestart");
+        //Log.d(TAG, "onRestart");
         super.onRestart();
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
-        Log.d(TAG, "onRestoreInstanceState");
+        //Log.d(TAG, "onRestoreInstanceState");
         super.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
     protected void onResume() {
-        Log.d(TAG, "onResume");
+        //Log.d(TAG, "onResume");
         super.onResume();
         init();
         startDiscovery();
@@ -96,20 +96,20 @@ public class ScanActivity extends Activity {
 
     @Override
     protected void onPause() {
-        Log.d(TAG, "onPause");
+        //Log.d(TAG, "onPause");
         stopDiscovery();
         super.onPause();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        Log.d(TAG, "onSaveInstanceState");
+        //Log.d(TAG, "onSaveInstanceState");
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onStart() {
-        Log.d(TAG, "onStart");
+        //Log.d(TAG, "onStart");
         super.onStart();
         init();
         startDiscovery();
@@ -117,7 +117,7 @@ public class ScanActivity extends Activity {
 
     @Override
     protected void onStop() {
-        Log.d(TAG, "onStop");
+        //Log.d(TAG, "onStop");
         super.onStop();
         stopDiscovery();
     }
@@ -154,7 +154,7 @@ public class ScanActivity extends Activity {
                 stopDiscovery();
                 DeviceItem selectedDeviceItem = ((DeviceItem) _deviceList.get(position));
                 String selectedTitle = getResources().getString(R.string.app_name) + " - " + selectedDeviceItem.name;
-                Log.d(TAG, "Address selected:" + selectedDeviceItem.id);
+                //Log.d(TAG, "Address selected:" + selectedDeviceItem.id);
 
                 Intent returnIntent = new Intent();
                 returnIntent.putExtra("title", selectedTitle);
@@ -178,10 +178,10 @@ public class ScanActivity extends Activity {
             if (!_bluetoothAdapter.isDiscovering()) {
                 _bluetoothAdapter.stopLeScan(mLeScanCallback);
             }
-            Log.d(TAG, "Starting scan on thread id:" + Process.myTid());
+            //Log.d(TAG, "Starting scan on thread id:" + Process.myTid());
             _bluetoothAdapter.startLeScan(mLeScanCallback);
         } else {
-            Log.e(TAG, "Bluetooth adapter is null");
+            //Log.e(TAG, "Bluetooth adapter is null");
         }
     }
 
@@ -192,11 +192,11 @@ public class ScanActivity extends Activity {
     private BluetoothAdapter.LeScanCallback mLeScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord) {
-            Log.v(TAG, "Scan found device" + device.getAddress());
-            Log.d(TAG, "onLeScan called from thread id:" + Process.myTid());
+            //Log.v(TAG, "Scan found device" + device.getAddress());
+            //Log.d(TAG, "onLeScan called from thread id:" + Process.myTid());
             runOnUiThread(new Runnable() {
                 public void run() {
-                    Log.d(TAG, "Updating data and ui from thread id:" + Process.myTid());
+                    //Log.d(TAG, "Updating data and ui from thread id:" + Process.myTid());
                     addDeviceItem(device, rssi);
                     _deviceAdapter.notifyDataSetChanged();
                 }
