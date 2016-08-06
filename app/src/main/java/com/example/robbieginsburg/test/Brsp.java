@@ -40,14 +40,6 @@ public class Brsp {
     private ArrayBlockingQueue<Double> _inputBuffer;
     private ArrayBlockingQueue<Double> _outputBuffer;
 
-    private File file1;
-    private File file2;
-    private File file3;
-    private File file4;
-
-    // used for writing the output of RED/IRLED before/after smooth to files
-    boolean doThis = true;
-
     private final double K = .975;
 
     SmoothFreq smoothFreq;
@@ -324,6 +316,10 @@ public class Brsp {
                             byte[] validBytesToSend = new byte[22];
                             System.arraycopy(byteData, byteData.length - 22, validBytesToSend, 0, 22);
 
+                            // empties the valid bytes array since they have now been passed along
+                            // otherwise this array would grow until it ran out of memory
+                            byteData = new byte[0];
+
                             // pass the valid bytes for conversion to REDLED/IRLED
                             addToLedArrays(validBytesToSend);
                         }
@@ -598,35 +594,6 @@ public class Brsp {
                 // performs the smooth function on the REDLED data
                 double[] smoothedREDLED = smooth(REDLED);
                 double[] smoothedIRLED = smooth(IRLED);
-
-
-                if(doThis) {
-                    doThis = false;
-
-                    try {
-                        FileOutputStream fileOutputStream1 = new FileOutputStream(file1, true);
-                        for (double a : REDLED) fileOutputStream1.write(String.valueOf(a + "\n").getBytes());
-                        fileOutputStream1.close();
-
-
-                        FileOutputStream fileOutputStream2 = new FileOutputStream(file2, true);
-                        for (double b : smoothedREDLED) fileOutputStream2.write(String.valueOf(b + "\n").getBytes());
-                        fileOutputStream2.close();
-
-
-                        FileOutputStream fileOutputStream3 = new FileOutputStream(file3, true);
-                        for (double c : IRLED) fileOutputStream3.write(String.valueOf(c + "\n").getBytes());
-                        fileOutputStream3.close();
-
-
-                        FileOutputStream fileOutputStream4 = new FileOutputStream(file4, true);
-                        for (double d : smoothedIRLED) fileOutputStream4.write(String.valueOf(d + "\n").getBytes());
-                        fileOutputStream4.close();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
 
                 // **************************************************************** freq function
                 // start of fft transform **********
@@ -1174,88 +1141,6 @@ public class Brsp {
      */
     public boolean connect(Context context, BluetoothDevice device) {
         //debugLog("connect()");
-
-        // specifies tha path to where the file will be created/stored
-        // in this case, the file will be created/stored in the root directory
-        File filePath = Environment.getExternalStorageDirectory();
-
-        // name the file assignment.txt
-        file1 = new File(filePath, "REDLED_before_smooth.txt");
-        file2 = new File(filePath, "REDLED_after_smooth.txt");
-        file3 = new File(filePath, "IRLED_before_smooth.txt");
-        file4 = new File(filePath, "IRLED_after_smooth.txt");
-
-        // checks to see if the file already exists in the user's system, at the specified location
-        if (file1.exists()) {
-            // if it does, clear all the data already in it
-            try {
-                PrintWriter writer = new PrintWriter(file1);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        } else {
-            // if it doesn't, create the file
-            try {
-                file1.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // checks to see if the file already exists in the user's system, at the specified location
-        if (file2.exists()) {
-            // if it does, clear all the data already in it
-            try {
-                PrintWriter writer = new PrintWriter(file2);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        } else {
-            // if it doesn't, create the file
-            try {
-                file2.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // checks to see if the file already exists in the user's system, at the specified location
-        if (file3.exists()) {
-            // if it does, clear all the data already in it
-            try {
-                PrintWriter writer = new PrintWriter(file3);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        } else {
-            // if it doesn't, create the file
-            try {
-                file3.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        // checks to see if the file already exists in the user's system, at the specified location
-        if (file4.exists()) {
-            // if it does, clear all the data already in it
-            try {
-                PrintWriter writer = new PrintWriter(file4);
-                writer.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        } else {
-            // if it doesn't, create the file
-            try {
-                file4.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
 
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
