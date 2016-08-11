@@ -1,10 +1,5 @@
 package com.example.robbieginsburg.test;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
@@ -23,7 +18,6 @@ import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.os.AsyncTask;
-import android.os.Environment;
 import android.util.Log;
 
 /**
@@ -45,7 +39,7 @@ public class Brsp {
     SmoothFreq smoothFreq;
 
     private final int MAX_DATA = 1500;
-    private final int FS = 50;
+    private final int FS = 60;
 
     private int numGoodData = 0;
     private int numBadData = 0;
@@ -55,6 +49,8 @@ public class Brsp {
 
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
+
+    double[] ACCELEROMETERVALUES = new double[0];
 
     private int dataCount = 0;
     byte[] byteData = new byte[0];
@@ -341,6 +337,10 @@ public class Brsp {
             double val1 = (char) validBytes[4] | ((char) validBytes[5] << 8);
             double val2 = (char) validBytes[7] | ((char) validBytes[8] << 8);
 
+            double acclX = ((char) validBytes[10] << 8) | (char) validBytes[11];
+            double acclY = ((char) validBytes[12] << 8) | (char) validBytes[13];
+            double acclZ = ((char) validBytes[14] << 8) | (char) validBytes[15];
+
             // convert DC values to AC
             val1 *= (1.2/(2^15));
             val2 *= (1.2/(2^15));
@@ -351,22 +351,31 @@ public class Brsp {
             double[]addToIR = new double[1];
             addToIR[0] = val2;
 
+            double[]addToAccel = new double[3];
+            addToAccel[0] = acclX;
+            addToAccel[1] = acclX;
+            addToAccel[2] = acclX;
+
             // create a tmp array that is the size of the REDLED/IRLED arrays + 1
             // the '+ 1' is for adding the newly converted AC value
             double[]tmpRED = new double[REDLED.length + 1];
             double[]tmpIR = new double[IRLED.length + 1];
+            double[]tmpAccel = new double[ACCELEROMETERVALUES.length + 3];
 
             // copy REDLED/IRLED into start of tmp
             System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
             System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
+            System.arraycopy(ACCELEROMETERVALUES, 0, tmpAccel, 0, ACCELEROMETERVALUES.length);
 
             // copy addToRED/addToIR into end of tmp
             System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
             System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
+            System.arraycopy(addToAccel, 0, tmpAccel, ACCELEROMETERVALUES.length, addToAccel.length);
 
             // puts the now combined tmp arrays back into the original arrays
             REDLED = tmpRED;
             IRLED = tmpIR;
+            ACCELEROMETERVALUES = tmpAccel;
 
             // will check to see if the arrays are >= 1500 after adding the value
             // if so it will drop the oldest entrys
@@ -383,6 +392,13 @@ public class Brsp {
                 // puts the shifted tmp array back into the original array
                 REDLED = tmpForShiftRED;
                 IRLED = tmpForShiftIR;
+            }
+
+            if(ACCELEROMETERVALUES.length >= MAX_DATA*3){
+                int shiftBy = ACCELEROMETERVALUES.length - MAX_DATA;
+                double[] tmpForShiftACCEL = new double[ACCELEROMETERVALUES.length-shiftBy];
+                System.arraycopy(ACCELEROMETERVALUES, shiftBy , tmpForShiftACCEL, 0, ACCELEROMETERVALUES.length-shiftBy);
+                ACCELEROMETERVALUES = tmpForShiftACCEL;
             }
 
             //Log.d("REDLED Length", "REDLED Length" + REDLED.length);
@@ -598,7 +614,6 @@ public class Brsp {
                 // **************************************************************** freq function
                 // start of fft transform **********
                 double[] inReal = smoothedREDLED;
-                double[] inImag = new double[smoothedREDLED.length];
                 double[] fftOutput = new double[smoothedREDLED.length];
 
                 int n = inReal.length;
@@ -607,7 +622,7 @@ public class Brsp {
                     //double sumimag = 0;
                     for (int j = 0; j < n; j++) {  // For each input element
                         double angle = (2 * Math.PI * j * i / n);
-                        sumreal += inReal[j] * Math.cos(angle) + inImag[j] * Math.sin(angle);
+                        sumreal += inReal[j] * Math.cos(angle);
                     }
                     fftOutput[i] = sumreal;
                 }
@@ -1144,7 +1159,7 @@ public class Brsp {
 
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
-            freq[i] = (((double) i * (double) FS) / (double) MAX_DATA);
+            freq[i] = (((double) i * (double) 50) / (double) MAX_DATA);
         }
 
         smoothFreq = new SmoothFreq();
