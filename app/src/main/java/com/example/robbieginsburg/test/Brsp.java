@@ -50,7 +50,9 @@ public class Brsp {
     double[] REDLED = new double[0];
     double[] IRLED = new double[0];
 
-    double[] ACCELEROMETERVALUES = new double[0];
+    double[] ACCELEROMETERX = new double[0];
+    double[] ACCELEROMETERY = new double[0];
+    double[] ACCELEROMETERZ = new double[0];
 
     private int dataCount = 0;
     byte[] byteData = new byte[0];
@@ -351,31 +353,44 @@ public class Brsp {
             double[]addToIR = new double[1];
             addToIR[0] = val2;
 
-            double[]addToAccel = new double[3];
-            addToAccel[0] = acclX;
-            addToAccel[1] = acclX;
-            addToAccel[2] = acclX;
+            double[]addToAccelX = new double[1];
+            addToAccelX[0] = acclX;
+
+            double[]addToAccelY = new double[1];
+            addToAccelY[0] = acclY;
+
+            double[]addToAccelZ = new double[1];
+            addToAccelZ[0] = acclZ;
 
             // create a tmp array that is the size of the REDLED/IRLED arrays + 1
             // the '+ 1' is for adding the newly converted AC value
             double[]tmpRED = new double[REDLED.length + 1];
             double[]tmpIR = new double[IRLED.length + 1];
-            double[]tmpAccel = new double[ACCELEROMETERVALUES.length + 3];
+            double[]tmpAccelX = new double[ACCELEROMETERX.length + 1];
+            double[]tmpAccelY = new double[ACCELEROMETERY.length + 1];
+            double[]tmpAccelZ = new double[ACCELEROMETERZ.length + 1];
 
             // copy REDLED/IRLED into start of tmp
             System.arraycopy(REDLED, 0, tmpRED, 0, REDLED.length);
             System.arraycopy(IRLED, 0, tmpIR, 0, IRLED.length);
-            System.arraycopy(ACCELEROMETERVALUES, 0, tmpAccel, 0, ACCELEROMETERVALUES.length);
+            System.arraycopy(ACCELEROMETERX, 0, tmpAccelX, 0, ACCELEROMETERX.length);
+            System.arraycopy(ACCELEROMETERY, 0, tmpAccelY, 0, ACCELEROMETERY.length);
+            System.arraycopy(ACCELEROMETERZ, 0, tmpAccelZ, 0, ACCELEROMETERZ.length);
+
 
             // copy addToRED/addToIR into end of tmp
             System.arraycopy(addToRED, 0, tmpRED, REDLED.length, addToRED.length);
             System.arraycopy(addToIR, 0, tmpIR, IRLED.length, addToIR.length);
-            System.arraycopy(addToAccel, 0, tmpAccel, ACCELEROMETERVALUES.length, addToAccel.length);
+            System.arraycopy(addToAccelX, 0, tmpAccelX, ACCELEROMETERX.length, addToAccelX.length);
+            System.arraycopy(addToAccelY, 0, tmpAccelY, ACCELEROMETERY.length, addToAccelY.length);
+            System.arraycopy(addToAccelZ, 0, tmpAccelZ, ACCELEROMETERZ.length, addToAccelZ.length);
 
             // puts the now combined tmp arrays back into the original arrays
             REDLED = tmpRED;
             IRLED = tmpIR;
-            ACCELEROMETERVALUES = tmpAccel;
+            ACCELEROMETERX = tmpAccelX;
+            ACCELEROMETERY = tmpAccelY;
+            ACCELEROMETERZ = tmpAccelZ;
 
             // will check to see if the arrays are >= 1500 after adding the value
             // if so it will drop the oldest entrys
@@ -385,20 +400,22 @@ public class Brsp {
 
                 double[] tmpForShiftRED = new double[REDLED.length-shiftBy];
                 double[] tmpForShiftIR = new double[IRLED.length-shiftBy];
+                double[] tmpForShiftACCELX = new double[ACCELEROMETERX.length-shiftBy];
+                double[] tmpForShiftACCELY = new double[ACCELEROMETERY.length-shiftBy];
+                double[] tmpForShiftACCELZ = new double[ACCELEROMETERZ.length-shiftBy];
 
                 System.arraycopy(REDLED, shiftBy , tmpForShiftRED, 0, REDLED.length-shiftBy);
                 System.arraycopy(IRLED, shiftBy, tmpForShiftIR, 0, IRLED.length-shiftBy);
+                System.arraycopy(ACCELEROMETERX, shiftBy , tmpForShiftACCELX, 0, ACCELEROMETERX.length-shiftBy);
+                System.arraycopy(ACCELEROMETERY, shiftBy , tmpForShiftACCELY, 0, ACCELEROMETERY.length-shiftBy);
+                System.arraycopy(ACCELEROMETERZ, shiftBy , tmpForShiftACCELZ, 0, ACCELEROMETERZ.length-shiftBy);
 
                 // puts the shifted tmp array back into the original array
                 REDLED = tmpForShiftRED;
                 IRLED = tmpForShiftIR;
-            }
-
-            if(ACCELEROMETERVALUES.length >= MAX_DATA*3){
-                int shiftBy = ACCELEROMETERVALUES.length - MAX_DATA;
-                double[] tmpForShiftACCEL = new double[ACCELEROMETERVALUES.length-shiftBy];
-                System.arraycopy(ACCELEROMETERVALUES, shiftBy , tmpForShiftACCEL, 0, ACCELEROMETERVALUES.length-shiftBy);
-                ACCELEROMETERVALUES = tmpForShiftACCEL;
+                ACCELEROMETERX = tmpForShiftACCELX;
+                ACCELEROMETERY = tmpForShiftACCELY;
+                ACCELEROMETERZ = tmpForShiftACCELZ;
             }
 
             //Log.d("REDLED Length", "REDLED Length" + REDLED.length);
@@ -610,21 +627,40 @@ public class Brsp {
                 // performs the smooth function on the REDLED data
                 double[] smoothedREDLED = smooth(REDLED);
                 double[] smoothedIRLED = smooth(IRLED);
+                double[] smoothedACCELX = smooth(ACCELEROMETERX);
+                double[] smoothedACCELY = smooth(ACCELEROMETERY);
+                double[] smoothedACCELZ = smooth(ACCELEROMETERZ);
 
                 // **************************************************************** freq function
                 // start of fft transform **********
                 double[] inReal = smoothedREDLED;
+                double[] inRealX = smoothedACCELX;
+                double[] inRealY = smoothedACCELY;
+                double[] inRealZ = smoothedACCELZ;
                 double[] fftOutput = new double[smoothedREDLED.length];
+                double[] fftOutputX = new double[smoothedACCELX.length];
+                double[] fftOutputY = new double[smoothedACCELY.length];
+                double[] fftOutputZ = new double[smoothedACCELZ.length];
 
                 int n = inReal.length;
-                for (int i = 0; i < n; i++) {  // For each output element
+                for (int i = 0; i < n; i++) {
+
                     double sumreal = 0;
-                    //double sumimag = 0;
-                    for (int j = 0; j < n; j++) {  // For each input element
+                    double sumrealX = 0;
+                    double sumrealY = 0;
+                    double sumrealZ = 0;
+
+                    for (int j = 0; j < n; j++) {
                         double angle = (2 * Math.PI * j * i / n);
                         sumreal += inReal[j] * Math.cos(angle);
+                        sumrealX += inRealX[j] * Math.cos(angle);
+                        sumrealY += inRealY[j] * Math.cos(angle);
+                        sumrealZ += inRealZ[j] * Math.cos(angle);
                     }
                     fftOutput[i] = sumreal;
+                    fftOutputX[i] = sumrealX;
+                    fftOutputY[i] = sumrealY;
+                    fftOutputZ[i] = sumrealZ;
                 }
                 // end of fft transform **********
 
@@ -634,36 +670,143 @@ public class Brsp {
                 // find the index of the max value in the FFT array that corresponds to the first range     // respirator
                 // find the index of the max value in the FFT array that corresponds to the second range     // heart rate
                 double[] respiratorRange = new double[9];
+                double[] respiratorRangeX = new double[9];
+                double[] respiratorRangeY = new double[9];
+                double[] respiratorRangeZ = new double[9];
+
                 double[] heartRateRange = new double[15];
+                double[] heartRateRangeX = new double[15];
+                double[] heartRateRangeY = new double[15];
+                double[] heartRateRangeZ = new double[15];
+
                 System.arraycopy(fftOutput, 6, respiratorRange, 0, 9);
+                System.arraycopy(fftOutput, 6, respiratorRangeX, 0, 9);
+                System.arraycopy(fftOutput, 6, respiratorRangeY, 0, 9);
+                System.arraycopy(fftOutput, 6, respiratorRangeZ, 0, 9);
+
                 System.arraycopy(fftOutput, 27, heartRateRange, 0, 15);
+                System.arraycopy(fftOutput, 27, heartRateRangeX, 0, 15);
+                System.arraycopy(fftOutput, 27, heartRateRangeY, 0, 15);
+                System.arraycopy(fftOutput, 27, heartRateRangeZ, 0, 15);
 
                 // find the index of the max value in the respiratorRange array
-                int respMaxIndex = 0;
+                int respMaxIndex1stMAX = 0;
+                int respMaxIndex2ndMAX = 0;
+                int respMaxIndex3rdMAX = 0;
+                int respMaxIndexXMAX = 0;
+                int respMaxIndexYMAX = 0;
+                int respMaxIndexZMAX = 0;
+
                 double respMax = respiratorRange[0];
+                double respMaxX = respiratorRangeX[0];
+                double respMaxY = respiratorRangeY[0];
+                double respMaxZ = respiratorRangeZ[0];
+
                 for(int i = 0; i < respiratorRange.length-1; i++){
+
                     if(respMax > respiratorRange[i+1]){
                         respMax = respiratorRange[i+1];
-                        respMaxIndex = i + 1;
+                        respMaxIndex3rdMAX = respMaxIndex2ndMAX;
+                        respMaxIndex2ndMAX = respMaxIndex1stMAX;
+                        respMaxIndex1stMAX = i + 1;
+                    }
+
+                    if(respMaxX > respiratorRangeX[i+1]){
+                        respMaxX = respiratorRangeX[i+1];
+                        respMaxIndexXMAX = i + 1;
+                    }
+
+                    if(respMaxY > respiratorRangeY[i+1]){
+                        respMaxY = respiratorRangeY[i+1];
+                        respMaxIndexYMAX = i + 1;
+                    }
+
+                    if(respMaxZ > respiratorRangeZ[i+1]){
+                        respMaxZ = respiratorRangeZ[i+1];
+                        respMaxIndexZMAX = i + 1;
                     }
                 }
 
                 // find the index of the max value in the heartRateRange array
-                int heartMaxIndex = 0;
+                int heartMaxIndex1stMAX = 0;
+                int heartMaxIndex2ndMAX = 0;
+                int heartMaxIndex3rdMAX = 0;
+                int heartMaxIndexXMAX = 0;
+                int heartMaxIndexYMAX = 0;
+                int heartMaxIndexZMAX = 0;
+
                 double heartMax = heartRateRange[0];
+                double heartMaxX = heartRateRangeX[0];
+                double heartMaxY = heartRateRangeY[0];
+                double heartMaxZ = heartRateRangeZ[0];
+
                 for(int i = 0; i < heartRateRange.length-1; i++){
+
                     if(heartMax > heartRateRange[i+1]){
                         heartMax = heartRateRange[i+1];
-                        heartMaxIndex = i + 1;
+                        heartMaxIndex3rdMAX = heartMaxIndex2ndMAX;
+                        heartMaxIndex2ndMAX = heartMaxIndex1stMAX;
+                        heartMaxIndex1stMAX = i + 1;
+                    }
+
+                    if(heartMaxX > heartRateRangeX[i+1]){
+                        heartMaxX = heartRateRangeX[i+1];
+                        heartMaxIndexXMAX = i + 1;
+                    }
+
+                    if(heartMaxY > heartRateRangeY[i+1]){
+                        heartMaxY = heartRateRangeY[i+1];
+                        heartMaxIndexYMAX = i + 1;
+                    }
+
+                    if(heartMaxZ > heartRateRangeZ[i+1]){
+                        heartMaxZ = heartRateRangeZ[i+1];
+                        heartMaxIndexZMAX = i + 1;
                     }
                 }
 
-                // takes indexes of max and look them up in freq array and multiply by 50
-                double respiratorRate = freq[6 + respMaxIndex] * FS;
-                double heartRate = freq[27 + heartMaxIndex] * FS;
+                // takes indexes of max and look them up in freq array and multiply by 60
+                double respiratorRate1stMAX = freq[6 + respMaxIndex1stMAX] * FS;
+                double respiratorRate2ndMAX = freq[6 + respMaxIndex2ndMAX] * FS;
+                double respiratorRate3rdMAX = freq[6 + respMaxIndex3rdMAX] * FS;
+                double respiratorRateXMAX = freq[6 + respMaxIndexXMAX] * FS;
+                double respiratorRateYMAX = freq[6 + respMaxIndexYMAX] * FS;
+                double respiratorRateZMAX = freq[6 + respMaxIndexYMAX] * FS;
 
-                respHeartSpo2Rates[0] = heartRate;
-                respHeartSpo2Rates[1] = respiratorRate;
+                double heartRate1stMAX = freq[27 + heartMaxIndex1stMAX] * FS;
+                double heartRate2ndMAX = freq[27 + heartMaxIndex2ndMAX] * FS;
+                double heartRate3rdMAX = freq[27 + heartMaxIndex3rdMAX] * FS;
+                double heartRateXMAX = freq[27 + heartMaxIndexXMAX] * FS;
+                double heartRateYMAX = freq[27 + heartMaxIndexYMAX] * FS;
+                double heartRateZMAX = freq[27 + heartMaxIndexZMAX] * FS;
+
+                // heart rate
+                if(heartRate1stMAX == heartRateXMAX || heartRate1stMAX == heartRateYMAX || heartRate1stMAX == heartRateZMAX){
+
+                    if(heartRate2ndMAX == heartRateXMAX || heartRate2ndMAX == heartRateYMAX || heartRate2ndMAX == heartRateZMAX){
+                        respHeartSpo2Rates[0] = heartRate3rdMAX;
+                    }
+                    else{
+                        respHeartSpo2Rates[0] = heartRate2ndMAX;
+                    }
+                }
+                else{
+                    respHeartSpo2Rates[0] = heartRate1stMAX;
+                }
+
+                // respiratory rate
+                if(respiratorRate1stMAX == respiratorRateXMAX || respiratorRate1stMAX == respiratorRateYMAX || respiratorRate1stMAX == respiratorRateZMAX){
+
+                    if(respiratorRate2ndMAX == respiratorRateXMAX || respiratorRate2ndMAX == respiratorRateYMAX || respiratorRate2ndMAX == respiratorRateZMAX){
+                        respHeartSpo2Rates[1] = respiratorRate3rdMAX;
+                    }
+                    else{
+                        respHeartSpo2Rates[1] = respiratorRate2ndMAX;
+                    }
+                }
+                else{
+                    respHeartSpo2Rates[1] = respiratorRate1stMAX;
+                }
                 // **************************************************************** freq function
 
 
@@ -1160,6 +1303,7 @@ public class Brsp {
         // calculates the frequencies
         for (int i = 0; i < freq.length; i++) {
             freq[i] = (((double) i * (double) 50) / (double) MAX_DATA);
+            //Log.d("looky here", "" + i + ": " + freq[i]);
         }
 
         smoothFreq = new SmoothFreq();
