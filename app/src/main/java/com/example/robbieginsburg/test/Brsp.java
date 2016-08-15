@@ -633,16 +633,12 @@ public class Brsp {
 
                 // **************************************************************** freq function
                 // start of fft transform **********
-                double[] inReal = smoothedREDLED;
-                double[] inRealX = smoothedACCELX;
-                double[] inRealY = smoothedACCELY;
-                double[] inRealZ = smoothedACCELZ;
                 double[] fftOutput = new double[smoothedREDLED.length];
                 double[] fftOutputX = new double[smoothedACCELX.length];
                 double[] fftOutputY = new double[smoothedACCELY.length];
                 double[] fftOutputZ = new double[smoothedACCELZ.length];
 
-                int n = inReal.length;
+                int n = smoothedREDLED.length;
                 for (int i = 0; i < n; i++) {
 
                     double sumreal = 0;
@@ -652,10 +648,10 @@ public class Brsp {
 
                     for (int j = 0; j < n; j++) {
                         double angle = (2 * Math.PI * j * i / n);
-                        sumreal += inReal[j] * Math.cos(angle);
-                        sumrealX += inRealX[j] * Math.cos(angle);
-                        sumrealY += inRealY[j] * Math.cos(angle);
-                        sumrealZ += inRealZ[j] * Math.cos(angle);
+                        sumreal += smoothedREDLED[j] * Math.cos(angle);
+                        sumrealX += smoothedACCELX[j] * Math.cos(angle);
+                        sumrealY += smoothedACCELY[j] * Math.cos(angle);
+                        sumrealZ += smoothedACCELZ[j] * Math.cos(angle);
                     }
                     fftOutput[i] = sumreal;
                     fftOutputX[i] = sumrealX;
@@ -680,14 +676,14 @@ public class Brsp {
                 double[] heartRateRangeZ = new double[15];
 
                 System.arraycopy(fftOutput, 6, respiratorRange, 0, 9);
-                System.arraycopy(fftOutput, 6, respiratorRangeX, 0, 9);
-                System.arraycopy(fftOutput, 6, respiratorRangeY, 0, 9);
-                System.arraycopy(fftOutput, 6, respiratorRangeZ, 0, 9);
+                System.arraycopy(fftOutputX, 6, respiratorRangeX, 0, 9);
+                System.arraycopy(fftOutputY, 6, respiratorRangeY, 0, 9);
+                System.arraycopy(fftOutputZ, 6, respiratorRangeZ, 0, 9);
 
                 System.arraycopy(fftOutput, 27, heartRateRange, 0, 15);
-                System.arraycopy(fftOutput, 27, heartRateRangeX, 0, 15);
-                System.arraycopy(fftOutput, 27, heartRateRangeY, 0, 15);
-                System.arraycopy(fftOutput, 27, heartRateRangeZ, 0, 15);
+                System.arraycopy(fftOutputX, 27, heartRateRangeX, 0, 15);
+                System.arraycopy(fftOutputY, 27, heartRateRangeY, 0, 15);
+                System.arraycopy(fftOutputZ, 27, heartRateRangeZ, 0, 15);
 
                 // find the index of the max value in the respiratorRange array
                 int respMaxIndex1stMAX = 0;
@@ -771,7 +767,7 @@ public class Brsp {
                 double respiratorRate3rdMAX = freq[6 + respMaxIndex3rdMAX] * FS;
                 double respiratorRateXMAX = freq[6 + respMaxIndexXMAX] * FS;
                 double respiratorRateYMAX = freq[6 + respMaxIndexYMAX] * FS;
-                double respiratorRateZMAX = freq[6 + respMaxIndexYMAX] * FS;
+                double respiratorRateZMAX = freq[6 + respMaxIndexZMAX] * FS;
 
                 double heartRate1stMAX = freq[27 + heartMaxIndex1stMAX] * FS;
                 double heartRate2ndMAX = freq[27 + heartMaxIndex2ndMAX] * FS;
