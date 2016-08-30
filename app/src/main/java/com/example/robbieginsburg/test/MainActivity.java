@@ -397,8 +397,8 @@ public class MainActivity extends Activity {
         yAxisSPO2.setDrawAxisLine(true);
         yAxisSPO2.setDrawGridLines(true);
         yAxisSPO2.setAxisLineWidth(2f);
-        yAxisSPO2.setAxisMinValue(0f);
-        yAxisSPO2.setAxisMaxValue(2f);
+        yAxisSPO2.setAxisMinValue(0.85f);
+        yAxisSPO2.setAxisMaxValue(1.5f);
         // healthy resting min respiratory rate line
         LimitLine healthyMinSPO2 = new LimitLine(.90f, "Healthy Resting Minimum SPO2 Rate");
         healthyMinSPO2.setLineColor(Color.GREEN);

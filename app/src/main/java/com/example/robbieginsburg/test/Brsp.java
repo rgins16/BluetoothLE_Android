@@ -835,7 +835,7 @@ public class Brsp {
 
                 Log.d("spo2", "it is: " + spo2);
 
-                respHeartSpo2Rates[2] = (spo2 * .825);
+                respHeartSpo2Rates[2] = spo2;
 
                 // call addToBuffer to pass Respiration/Heart Rate to MainActivity
                 addToBuffer(_inputBuffer, respHeartSpo2Rates);
