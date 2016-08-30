@@ -805,57 +805,37 @@ public class Brsp {
                 }
                 // **************************************************************** freq function
 
+                double meanREDLED = 0;
+                double rmsREDLED = 0;
 
-                // performs the smooth function on the REDLED/IRLED data
-                double[] smoothedREDLEDForPeakDetect = smoothedREDLED;
-                double[] smoothedIRLEDForPeakDetect = smoothedIRLED;
+                double meanIRLED = 0;
+                double rmsIRLED = 0;
 
-                // does some data shifting for REDLED/IRLED after smoothing them for peak detect
-                double[] tmpSmoothedREDLEDForPeakDetect = new double[smoothedREDLEDForPeakDetect.length - 180];
-                double[] tmpSmoothedIRLEDForPeakDetect = new double[smoothedIRLEDForPeakDetect.length - 180];
-                System.arraycopy(smoothedREDLEDForPeakDetect, 30, tmpSmoothedREDLEDForPeakDetect, 0, tmpSmoothedREDLEDForPeakDetect.length);
-                System.arraycopy(smoothedIRLEDForPeakDetect, 30, tmpSmoothedIRLEDForPeakDetect, 0, tmpSmoothedIRLEDForPeakDetect.length);
-                smoothedREDLEDForPeakDetect = tmpSmoothedREDLEDForPeakDetect;
-                smoothedIRLEDForPeakDetect = tmpSmoothedIRLEDForPeakDetect;
+                // get the mean of both REDLED/IRLED arrays and calculate the RMS value for both too
+                for(int i = 0; i < REDLED.length; i++){
+                    meanREDLED += REDLED[i];
+                    rmsREDLED += (REDLED[i] * REDLED[i]);
 
-                // performs the peak detect function on the smoothed REDLED/IRLED data
-                // in order to find ther max peaks
-                double[] peaksREDLED = peakDetect(smoothedREDLEDForPeakDetect);
-                double[] peaksIRLED = peakDetect(smoothedIRLEDForPeakDetect);
+                    meanIRLED += IRLED[i];
+                    rmsIRLED += (IRLED[i] * IRLED[i]);
+                }
 
-//                for (double aPeaksREDLED : peaksREDLED) Log.d("peaksREDLED", "" + aPeaksREDLED);
-//                Log.d("peaksREDLED LENGTH", "" + peaksREDLED.length);
-//                for (double aPeaksIRLED : peaksIRLED) Log.d("peaksIRLED", "" + aPeaksIRLED);
-//                Log.d("peaksIRLED LENGTH", "" + peaksIRLED.length);
+                meanREDLED /= REDLED.length;
+                rmsREDLED /= REDLED.length;
+                rmsREDLED = Math.sqrt(rmsREDLED);
 
-                // find mean of max peak arrays
-                double meanPeaksREDLED = 0.0;
-                double meanPeaksIRLED = 0.0;
-                for(int i = 0; i < peaksREDLED.length - 1; i++) meanPeaksREDLED += Math.abs(peaksREDLED[i] - peaksREDLED[i+1]);
-                for(int i = 0; i < peaksIRLED.length - 1; i++) meanPeaksIRLED += Math.abs(peaksIRLED[i] - peaksIRLED[i+1]);
+                meanIRLED /= IRLED.length;
+                rmsIRLED /= IRLED.length;
+                rmsIRLED = Math.sqrt(rmsIRLED);
 
-                meanPeaksREDLED /= peaksREDLED.length;
-                meanPeaksIRLED /= peaksIRLED.length;
+                double redSPO2 = rmsREDLED / meanREDLED;
+                double irSPO2 = rmsIRLED / meanIRLED;
 
-                // find min of max peak arrays
-                Arrays.sort(peaksREDLED);
-                Arrays.sort(peaksIRLED);
-                double minMaxPeaksREDLED = peaksREDLED[0];
-                double minMaxPeaksIRLED = peaksIRLED[0];
+                double spo2 = redSPO2 / irSPO2;
 
-                Log.d("meanPeaksREDLED", "" + meanPeaksREDLED);
-                Log.d("meanPeaksIRLED", "" + meanPeaksIRLED);
+                Log.d("spo2", "it is: " + spo2);
 
-                // calculate SPO2
-                double spo2 = (meanPeaksREDLED) / (meanPeaksIRLED);
-                // multiply by a constant K
-                spo2 *= K;
-                Log.d("SPO2 value", "" + spo2);
-
-                respHeartSpo2Rates[2] = spo2;
-
-                //Log.d("Respiration Rate: ", "Respiration Rate: " + respiratorRate);
-                //Log.d("Heart Rate: ", "Heart Rate: " + heartRate);
+                respHeartSpo2Rates[2] = (spo2 * .825);
 
                 // call addToBuffer to pass Respiration/Heart Rate to MainActivity
                 addToBuffer(_inputBuffer, respHeartSpo2Rates);
@@ -945,82 +925,6 @@ public class Brsp {
             return smoothedArray;
         }
         // end of smooth function
-
-        // start peak detect function
-        public double[] peakDetect(double[] ledNoZeros) {
-
-            int peaks = 0;
-
-            final int LOOKAHEAD = 50;
-            boolean lookForLocalMax = true;
-            boolean lookForLocalMin = true;
-            double[] allPeaks = new double[0];
-
-//            // creates a new list comprised of all values of the LED array that are != 0.0
-//            // converts this list back into an array list
-//            List<Double> list = new ArrayList<Double>();
-//            for (double ledElement : LED) {
-//                if (ledElement != 0.0)  list.add(ledElement);
-//            }
-//            Double[] ledFixed = list.toArray(new Double[0]);
-//
-//            double[] ledNoZeros = new double[ledFixed.length];
-//            for(int i = 0; i < ledNoZeros.length; i++){
-//                ledNoZeros[i] = ledFixed[i];
-//            }
-
-            /*for (double e : ledNoZeros) {
-                Log.d("ledNoZeros", ": " + e);
-            }*/
-            //Log.d("ledNoZeros LENGTH", "LENGTH: " + ledNoZeros.length);
-
-            for(int i = 0; i + LOOKAHEAD < ledNoZeros.length; i++) {
-
-                // puts the next 300 values into an array, and sorts it to find the max and min value
-                double[] next300Values = new double[LOOKAHEAD];
-                System.arraycopy(ledNoZeros, i+1, next300Values, 0, LOOKAHEAD);
-                Arrays.sort(next300Values);
-                double next300ValuesMax = next300Values[next300Values.length-1];
-                double next300ValuesMin = next300Values[0];
-
-                //Log.d("max/min next 300", "max/min next 300: " + next300ValuesMax + " and " + next300ValuesMin);
-
-                // if the current element is the local max
-                if((ledNoZeros[i] > next300ValuesMax) && (lookForLocalMax)) {
-                    //Log.d("local max", "" + ledNoZeros[i]);
-                    //Log.d("max peak", "max peak: " + ledNoZeros[i] + " is greater than: " + next300ValuesMax);
-
-                    // add it to the maxima array
-                    double[] tmpAllPeaks = new double[allPeaks.length + 1];
-                    System.arraycopy(allPeaks, 0, tmpAllPeaks, 0, allPeaks.length);
-                    tmpAllPeaks[tmpAllPeaks.length - 1] = ledNoZeros[i];
-                    allPeaks = tmpAllPeaks;
-
-                    lookForLocalMax = false;
-                    lookForLocalMin = true;
-                    peaks++;
-                }
-
-                // if the current element is the local min
-                if(((ledNoZeros[i] < next300ValuesMin) && (lookForLocalMin)) || ((ledNoZeros[i] == next300ValuesMin) && (lookForLocalMin))){
-                    //Log.d("local min", "" + ledNoZeros[i]);
-                    //Log.d("min peak", "min peak: " + ledNoZeros[i] + " is less than: " + next300ValuesMin);
-
-                    // add it to the minima array
-                    double[] tmpAllPeaks = new double[allPeaks.length + 1];
-                    System.arraycopy(allPeaks, 0, tmpAllPeaks, 0, allPeaks.length);
-                    tmpAllPeaks[tmpAllPeaks.length - 1] = ledNoZeros[i];
-                    allPeaks = tmpAllPeaks;
-
-                    lookForLocalMin = false;
-                    lookForLocalMax = true;
-                    peaks++;
-                }
-            }
-
-            //Log.d("NUM PEAKS", "" + peaks);
-            return allPeaks;
-        } // end peak detect function
     } // end async task
 
 

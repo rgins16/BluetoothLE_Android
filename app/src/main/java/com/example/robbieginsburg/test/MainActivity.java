@@ -241,6 +241,9 @@ public class MainActivity extends Activity {
         //Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
 
+        // ask for permissions
+
+
         IntentFilter adapterStateFilter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
         this.registerReceiver(mReceiver, adapterStateFilter);
 
